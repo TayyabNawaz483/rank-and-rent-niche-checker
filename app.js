@@ -24,13 +24,6 @@ let currentFilters = {
 
 
 
-const openAddModalBtn = document.getElementById('openAddModalBtn');
-const closeAddModalBtn = document.getElementById('closeAddModalBtn');
-const cancelAddBtn = document.getElementById('cancelAddBtn');
-const addModal = document.getElementById('addModal');
-const saveNicheBtn = document.getElementById('saveNicheBtn');
-const nicheForm = document.getElementById('nicheForm');
-
 
 
 const searchNiche = document.getElementById('searchNiche');
@@ -64,32 +57,12 @@ const accordionHeader = document.getElementById('accordionHeader');
 const accordionContent = document.getElementById('accordionContent');
 const accordionArrow = document.getElementById('accordionArrow');
 
-// Form Inputs for Live Eval
-const nicheInput = document.getElementById('nicheInput');
-const cityInput = document.getElementById('cityInput');
-const stateInput = document.getElementById('stateInput');
-const populationInput = document.getElementById('populationInput');
-const zipsInput = document.getElementById('zipsInput');
-const keywordInput = document.getElementById('keywordInput');
-const kdInput = document.getElementById('kdInput');
-const volumeInput = document.getElementById('volumeInput');
-const daCountInput = document.getElementById('daCountInput');
-const gmbReview1 = document.getElementById('gmbReview1');
-const gmbReview2 = document.getElementById('gmbReview2');
-const gmbReview3 = document.getElementById('gmbReview3');
-const gmbCountInput = document.getElementById('gmbCountInput');
-const competitorTrafficInput = document.getElementById('competitorTrafficInput');
-const directoryCountInput = document.getElementById('directoryCountInput');
-const rrSiteCountInput = document.getElementById('rrSiteCountInput');
-const liveStatusIndicator = document.getElementById('liveStatusIndicator');
-
 // Initial Setup
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     initSupabase();
     loadNiches();
     setupEventListeners();
-    runLiveEvaluation(); // Initial evaluation of form defaults
 });
 
 // Theme Initialization
@@ -266,16 +239,6 @@ function setupEventListeners() {
         accordionArrow.style.transform = accordionContent.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
     });
 
-    // Modals visibility
-    openAddModalBtn.addEventListener('click', () => {
-        addModal.classList.add('open');
-        runLiveEvaluation();
-    });
-    closeAddModalBtn.addEventListener('click', () => addModal.classList.remove('open'));
-    cancelAddBtn.addEventListener('click', () => addModal.classList.remove('open'));
-
-
-
     // Filter controls
     searchNiche.addEventListener('input', (e) => {
         currentFilters.keyword = e.target.value.toLowerCase();
@@ -327,8 +290,6 @@ function setupEventListeners() {
             }
         });
 
-
-
         clearAdvancedFiltersBtn.addEventListener('click', () => {
             filterMaxKd.value = '';
             filterMaxVolume.value = '';
@@ -364,56 +325,6 @@ function setupEventListeners() {
         });
     });
 
-    // Suggestion Tags inside Add Form
-    document.querySelectorAll('#nicheSuggestions .suggestion-tag').forEach(tag => {
-        tag.addEventListener('click', () => {
-            nicheInput.value = tag.textContent;
-            updateKeywordDefault();
-            runLiveEvaluation();
-        });
-    });
-
-    document.querySelectorAll('#citySuggestions .suggestion-tag').forEach(tag => {
-        tag.addEventListener('click', () => {
-            cityInput.value = tag.textContent;
-            updateKeywordDefault();
-            runLiveEvaluation();
-        });
-    });
-
-    stateInput.addEventListener('change', () => {
-        updateKeywordDefault();
-        runLiveEvaluation();
-    });
-
-    nicheInput.addEventListener('input', () => {
-        updateKeywordDefault();
-        runLiveEvaluation();
-    });
-    cityInput.addEventListener('input', () => {
-        updateKeywordDefault();
-        runLiveEvaluation();
-    });
-    stateInput.addEventListener('input', () => {
-        updateKeywordDefault();
-        runLiveEvaluation();
-    });
-
-    // Live validation listener bindings
-    [
-        kdInput, volumeInput, daCountInput,
-        gmbReview1, gmbReview2, gmbReview3,
-        gmbCountInput, competitorTrafficInput,
-        directoryCountInput, rrSiteCountInput,
-        stateInput, zipsInput
-    ].forEach(input => {
-        input.addEventListener('input', runLiveEvaluation);
-        input.addEventListener('change', runLiveEvaluation);
-    });
-
-    // Save Data Click
-    saveNicheBtn.addEventListener('click', handleSaveData);
-
     // Export CSV Actions
     const exportCsvBtn = document.getElementById('exportCsvBtn');
     if (exportCsvBtn) {
@@ -421,15 +332,7 @@ function setupEventListeners() {
     }
 }
 
-// Automatically helper to fill target keyword
-function updateKeywordDefault() {
-    const nicheVal = nicheInput.value.trim().toLowerCase();
-    const cityVal = cityInput.value.trim();
-    const stateVal = stateInput.value.trim().toUpperCase();
-    if (nicheVal && cityVal) {
-        keywordInput.value = stateVal ? `${nicheVal} ${cityVal} ${stateVal}` : `${nicheVal} ${cityVal}`;
-    }
-}
+
 
 
 // Evaluates the Rank & Rent Niche Criteria
@@ -536,254 +439,7 @@ function evaluateNicheCriteria(data) {
     };
 }
 
-// Live Validation UI Renderer
-function runLiveEvaluation() {
-    const isFormEmpty = !nicheInput.value.trim() &&
-        !cityInput.value.trim() &&
-        !stateInput.value.trim() &&
-        !populationInput.value &&
-        !zipsInput.value &&
-        !kdInput.value &&
-        !volumeInput.value &&
-        !daCountInput.value &&
-        !gmbReview1.value &&
-        !gmbReview2.value &&
-        !gmbReview3.value &&
-        !gmbCountInput.value &&
-        !competitorTrafficInput.value &&
-        !directoryCountInput.value &&
-        !rrSiteCountInput.value;
 
-    if (isFormEmpty) {
-        liveStatusIndicator.className = 'live-status-indicator pending';
-        liveStatusIndicator.textContent = 'PENDING';
-
-        const pendingRules = ['evalKd', 'evalVolume', 'evalDa', 'evalGmbReviews', 'evalGmbCount', 'evalDirectory', 'evalTraffic', 'evalRrSite', 'evalZips'];
-        pendingRules.forEach(id => {
-            const container = document.getElementById(id);
-            const valTextEl = container.querySelector('.eval-status-val');
-            const icon = container.querySelector('.eval-icon');
-
-            container.className = 'live-eval-item';
-            valTextEl.textContent = '-';
-            valTextEl.className = 'eval-status-val text-muted';
-            valTextEl.style.color = 'var(--text-muted)';
-            icon.className = 'fa-solid fa-circle-question eval-icon pending';
-        });
-        return;
-    }
-
-    const isFilled = (el) => el && el.value !== "";
-
-    const filledStates = {
-        zips: isFilled(zipsInput),
-        kd: isFilled(kdInput),
-        volume: isFilled(volumeInput),
-        daCount: isFilled(daCountInput),
-        gmbReviews: isFilled(gmbReview1) && isFilled(gmbReview2) && isFilled(gmbReview3),
-        gmbCount: isFilled(gmbCountInput),
-        directory: isFilled(directoryCountInput),
-        traffic: isFilled(competitorTrafficInput),
-        rrSite: isFilled(rrSiteCountInput)
-    };
-
-    const data = {
-        zips: parseInt(zipsInput.value) || 0,
-        kd: parseInt(kdInput.value) || 0,
-        volume: parseInt(volumeInput.value) || 0,
-        da_count: parseInt(daCountInput.value) || 0,
-        gmb_reviews: [
-            parseInt(gmbReview1.value) || 0,
-            parseInt(gmbReview2.value) || 0,
-            parseInt(gmbReview3.value) || 0
-        ],
-        gmb_count: parseInt(gmbCountInput.value) || 0,
-        competitor_traffic: parseInt(competitorTrafficInput.value) || 0,
-        directory_count: parseInt(directoryCountInput.value) || 0,
-        rr_site_count: parseInt(rrSiteCountInput.value) || 0
-    };
-
-    const evalResult = evaluateNicheCriteria(data);
-
-    // Update Checklist items
-    updateChecklistItem('evalZips', 'evalZipsVal', evalResult.rules.zips, filledStates.zips);
-    updateChecklistItem('evalKd', 'evalKdVal', evalResult.rules.kd, filledStates.kd);
-    updateChecklistItem('evalVolume', 'evalVolumeVal', evalResult.rules.volume, filledStates.volume);
-    updateChecklistItem('evalDa', 'evalDaVal', evalResult.rules.daCount, filledStates.daCount);
-    updateChecklistItem('evalGmbReviews', 'evalGmbReviewsVal', evalResult.rules.gmbReviews, filledStates.gmbReviews);
-    updateChecklistItem('evalGmbCount', 'evalGmbCountVal', evalResult.rules.gmbCount, filledStates.gmbCount);
-    updateChecklistItem('evalDirectory', 'evalDirectoryVal', evalResult.rules.directory, filledStates.directory);
-    updateChecklistItem('evalTraffic', 'evalTrafficVal', evalResult.rules.traffic, filledStates.traffic);
-    updateChecklistItem('evalRrSite', 'evalRrSiteVal', evalResult.rules.rrSite, filledStates.rrSite);
-
-    // Update Overall Live Badge:
-    // - If any FILLED rule is FAIL, the overall status is FAIL.
-    // - If ALL rules are FILLED and PASS, the overall status is PASS.
-    // - Otherwise, overall status is PENDING.
-    let hasFail = false;
-    let allPassed = true;
-
-    const ruleCheckers = [
-        { filled: filledStates.zips, pass: evalResult.rules.zips.pass },
-        { filled: filledStates.kd, pass: evalResult.rules.kd.pass },
-        { filled: filledStates.volume, pass: evalResult.rules.volume.pass },
-        { filled: filledStates.daCount, pass: evalResult.rules.daCount.pass },
-        { filled: filledStates.gmbReviews, pass: evalResult.rules.gmbReviews.pass },
-        { filled: filledStates.gmbCount, pass: evalResult.rules.gmbCount.pass },
-        { filled: filledStates.directory, pass: evalResult.rules.directory.pass },
-        { filled: filledStates.traffic, pass: evalResult.rules.traffic.pass },
-        { filled: filledStates.rrSite, pass: evalResult.rules.rrSite.pass }
-    ];
-
-    ruleCheckers.forEach(checker => {
-        if (checker.filled) {
-            if (!checker.pass) {
-                hasFail = true;
-            }
-        } else {
-            allPassed = false;
-        }
-    });
-
-    if (hasFail) {
-        liveStatusIndicator.className = 'live-status-indicator fail';
-        liveStatusIndicator.textContent = 'FAIL';
-    } else if (allPassed) {
-        liveStatusIndicator.className = 'live-status-indicator pass';
-        liveStatusIndicator.textContent = 'PASS';
-    } else {
-        liveStatusIndicator.className = 'live-status-indicator pending';
-        liveStatusIndicator.textContent = 'PENDING';
-    }
-}
-
-function updateChecklistItem(itemId, valId, rule, isFilled) {
-    const container = document.getElementById(itemId);
-    const valTextEl = document.getElementById(valId);
-    const icon = container.querySelector('.eval-icon');
-
-    if (!isFilled) {
-        container.className = 'live-eval-item';
-        valTextEl.textContent = '-';
-        valTextEl.className = 'eval-status-val text-muted';
-        valTextEl.style.color = 'var(--text-muted)';
-        icon.className = 'fa-solid fa-circle-question eval-icon pending';
-        return;
-    }
-
-    valTextEl.textContent = rule.pass ? 'PASS' : 'FAIL';
-    valTextEl.className = rule.pass ? 'eval-status-val text-success' : 'eval-status-val text-danger';
-
-    if (rule.pass) {
-        container.className = 'live-eval-item pass';
-        icon.className = 'fa-solid fa-circle-check eval-icon pass';
-        valTextEl.style.color = 'var(--success)';
-    } else {
-        container.className = 'live-eval-item fail';
-        icon.className = 'fa-solid fa-circle-xmark eval-icon fail';
-        valTextEl.style.color = 'var(--danger)';
-    }
-}
-
-// Handle Form Submission Save Data
-async function handleSaveData(e) {
-    e.preventDefault();
-
-    if (!nicheForm.checkValidity()) {
-        nicheForm.reportValidity();
-        return;
-    }
-
-    const niche = nicheInput.value.trim();
-    const city = cityInput.value.trim();
-    const state = stateInput.value.trim().toUpperCase();
-    const population = parseInt(populationInput.value) || null;
-    const zips = parseInt(zipsInput.value) || 0;
-    const keyword = keywordInput.value.trim();
-    const kd = parseInt(kdInput.value) || 0;
-    const volume = parseInt(volumeInput.value) || 0;
-    const da_count = parseInt(daCountInput.value) || 0;
-    const gmb_reviews = [
-        parseInt(gmbReview1.value) || 0,
-        parseInt(gmbReview2.value) || 0,
-        parseInt(gmbReview3.value) || 0
-    ];
-    const gmb_count = parseInt(gmbCountInput.value) || 0;
-    const competitor_traffic = parseInt(competitorTrafficInput.value) || 0;
-    const directory_count = parseInt(directoryCountInput.value) || 0;
-    const rr_site_count = parseInt(rrSiteCountInput.value) || 0;
-
-    // Duplicate Check
-    const isDuplicate = nichesData.some(n => n.keyword.toLowerCase() === keyword.toLowerCase());
-    if (isDuplicate) {
-        showToast(`A niche with the keyword "${keyword}" already exists!`, "error");
-        return;
-    }
-
-    const evaluation = evaluateNicheCriteria({
-        kd, volume, da_count, gmb_reviews, gmb_count, competitor_traffic, directory_count, rr_site_count, zips
-    });
-
-    const newNiche = {
-        niche,
-        city,
-        state,
-        population,
-        zip_codes: zips,
-        keyword,
-        kd,
-        volume,
-        da_count,
-        gmb_reviews,
-        gmb_count,
-        competitor_traffic,
-        directory_count,
-        rr_site_count,
-        status: evaluation.status,
-        fail_reasons: evaluation.failReasons
-    };
-
-    saveNicheBtn.disabled = true;
-    saveNicheBtn.textContent = 'Saving...';
-
-    if (supabaseClient) {
-        try {
-            const { data, error } = await supabaseClient
-                .from('niches')
-                .insert([newNiche])
-                .select();
-
-            if (error) throw error;
-            if (data && data[0]) {
-                nichesData.unshift(data[0]);
-            } else {
-                // If select fails or returns empty, fetch again
-                await loadNiches();
-            }
-        } catch (error) {
-            console.error("Supabase insert error, saving to LocalStorage fallback:", error);
-            newNiche.id = 'local-' + Date.now();
-            newNiche.created_at = new Date().toISOString();
-            nichesData.unshift(newNiche);
-            saveLocalNiches();
-        }
-    } else {
-        newNiche.id = 'local-' + Date.now();
-        newNiche.created_at = new Date().toISOString();
-        nichesData.unshift(newNiche);
-        saveLocalNiches();
-    }
-
-    saveNicheBtn.disabled = false;
-    saveNicheBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Niche Data';
-
-    // Close Modal & Reset Form
-    addModal.classList.remove('open');
-    nicheForm.reset();
-    updateKeywordDefault();
-
-    renderDashboard();
-}
 
 // // Simple Toast Notification
 function showToast(message, type = 'success') {
