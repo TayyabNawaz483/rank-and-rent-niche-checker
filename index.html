@@ -19,6 +19,9 @@
             <span>RankRent<span style="color: var(--primary);">Evaluator</span></span>
         </a>
         <div class="nav-actions">
+            <a href="admin-login.html" class="btn btn-secondary" title="Admin Login" style="padding: 0.5rem; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">
+                <i class="fa-solid fa-lock"></i>
+            </a>
             <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Mode" style="padding: 0.5rem; width: 38px; height: 38px;">
                 <i class="fa-solid fa-sun" id="themeIcon"></i>
             </button>
@@ -71,8 +74,10 @@
             </div>
         </section>
 
-        <!-- Filters Section -->
-        <section class="filter-bar">
+        <div class="dashboard-layout">
+            <aside class="dashboard-sidebar">
+                <!-- Filter Controls -->
+                <section class="filter-bar">
             <div class="filter-group">
                 <label for="searchNiche">Search Keyword</label>
                 <input type="text" id="searchNiche" class="filter-input" placeholder="e.g. plumber, orlando...">
@@ -166,19 +171,83 @@
                     </button>
                 </div>
             </div>
-        </section>
-
-        <!-- Main Cards Grid -->
-        <section class="niche-grid" id="nicheGrid">
-            <!-- Cards will be dynamically inserted here by JavaScript -->
-            <div class="no-results">
-                <div class="no-results-icon">
-                    <i class="fa-solid fa-database"></i>
-                </div>
-                <h3>No Data Available</h3>
-                <p>Click "Add Niche Data" to evaluate your first Rank and Rent niche!</p>
+            <div class="filter-group">
+                <label>&nbsp;</label>
+                <button class="btn btn-secondary" id="toggleAdvancedFiltersBtn" style="width: 100%; height: 38px; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    Advanced <i class="fa-solid fa-sliders"></i>
+                </button>
             </div>
         </section>
+
+        <!-- Advanced Filters Panel -->
+        <section class="advanced-filters-panel" id="advancedFiltersPanel" style="display: none; padding: 1.5rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 var(--radius-lg) var(--radius-lg); margin-top: -2rem; margin-bottom: 2rem; position: relative; z-index: 1;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
+                <div class="filter-group">
+                    <label for="filterMaxKd">Max KD (&le;)</label>
+                    <input type="number" id="filterMaxKd" class="filter-input" min="0" placeholder="e.g. 10">
+                </div>
+                <div class="filter-group">
+                    <label for="filterMaxVolume">Max Volume (&le;)</label>
+                    <input type="number" id="filterMaxVolume" class="filter-input" min="0" placeholder="e.g. 100">
+                </div>
+                <div class="filter-group">
+                    <label for="filterMaxGmbReviews">Max Map Reviews (&le;)</label>
+                    <input type="number" id="filterMaxGmbReviews" class="filter-input" min="0" placeholder="e.g. 100">
+                </div>
+                <div class="filter-group">
+                    <label for="filterMaxGmbCount">Max GMB Count (&le;)</label>
+                    <input type="number" id="filterMaxGmbCount" class="filter-input" min="0" placeholder="e.g. 10">
+                </div>
+                <div class="filter-group">
+                    <label for="filterMinTraffic">Min Traffic (&ge;)</label>
+                    <input type="number" id="filterMinTraffic" class="filter-input" min="0" placeholder="e.g. 50">
+                </div>
+                <div class="filter-group">
+                    <label for="filterMinPopulation">Min Population</label>
+                    <input type="number" id="filterMinPopulation" class="filter-input" min="0" placeholder="e.g. 10000">
+                </div>
+                <div class="filter-group">
+                    <label for="filterMaxPopulation">Max Population</label>
+                    <input type="number" id="filterMaxPopulation" class="filter-input" min="0" placeholder="e.g. 100000">
+                </div>
+                <div class="filter-group">
+                    <label for="filterExactDa">Exact DA < 10 Sites (=)</label>
+                    <input type="number" id="filterExactDa" class="filter-input" min="0" placeholder="e.g. 4">
+                </div>
+                <div class="filter-group">
+                    <label for="filterExactDirectory">Exact Directories (=)</label>
+                    <input type="number" id="filterExactDirectory" class="filter-input" min="0" placeholder="e.g. 2">
+                </div>
+                <div class="filter-group">
+                    <label for="filterExactRr">Exact R&R Sites (=)</label>
+                    <input type="number" id="filterExactRr" class="filter-input" min="0" placeholder="e.g. 1">
+                </div>
+            </div>
+            <div style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                <button class="btn btn-primary" onclick="generateDummyNiches()" style="padding: 0.4rem 1rem; font-size: 0.8rem; background: var(--primary); border: none;">
+                    <i class="fa-solid fa-magic"></i> Generate Dummy Data
+                </button>
+                <button class="btn btn-secondary" id="clearAdvancedFiltersBtn" style="padding: 0.4rem 1rem; font-size: 0.8rem;">Clear Filters</button>
+            </div>
+        </section>
+
+                </section>
+            </aside>
+
+            <div class="dashboard-main-content">
+                <!-- Main Cards Grid -->
+                <section class="niche-grid" id="nicheGrid">
+                    <!-- Cards will be dynamically inserted here by JavaScript -->
+                    <div class="no-results">
+                        <div class="no-results-icon">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <h3>No Data Available</h3>
+                        <p>Click "Add Niche Data" to evaluate your first Rank and Rent niche!</p>
+                    </div>
+                </section>
+            </div>
+        </div>
 
         <!-- Collapsible How it Works Explainer -->
         <section class="info-accordion">
@@ -197,6 +266,10 @@
                             <li>
                                 <i class="fa-solid fa-square-poll-vertical"></i>
                                 <div><strong>Keyword Difficulty (KD):</strong> Must be <strong>10 or less</strong> to ensure rankings are beatable (KD &le; 10).</div>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-map-location-dot"></i>
+                                <div><strong>City Zip Codes:</strong> City must have <strong>2 or more</strong> zip codes to ensure it's large enough for a local business.</div>
                             </li>
                             <li>
                                 <i class="fa-solid fa-chart-line"></i>
@@ -382,14 +455,14 @@
                         </div>
                     </div>
 
-                    <div class="form-group" style="gap: 0.8rem; margin-top: 0.25rem;">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="hasDirectoryCheckbox">
-                            <label for="hasDirectoryCheckbox">Major Business Directory rankings in SERP?</label>
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="directoryCountInput">Business Directories in SERP (Count)</label>
+                            <input type="number" id="directoryCountInput" class="form-input" min="0" required>
                         </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="hasRrSiteCheckbox">
-                            <label for="hasRrSiteCheckbox">Rank & Rent / EMD / Micro Site available in SERPs?</label>
+                        <div class="form-group">
+                            <label for="rrSiteCountInput">R&R / EMD Sites in SERP (Count)</label>
+                            <input type="number" id="rrSiteCountInput" class="form-input" min="0" required>
                         </div>
                     </div>
                 </form>
@@ -477,6 +550,21 @@
     </div>
 
 
+
+    <!-- Custom Delete Modal -->
+    <div class="modal-overlay" id="deleteModal" style="display: none;">
+        <div class="delete-modal-content">
+            <div class="delete-modal-icon">
+                <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <h3>Delete Record</h3>
+            <p id="deleteModalMessage">Are you sure you want to delete this niche evaluation?</p>
+            <div class="delete-modal-actions">
+                <button class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmDeleteBtn" style="background: var(--danger);">Delete</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Supabase Client Library CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

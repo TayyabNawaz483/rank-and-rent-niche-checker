@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Rank & Rent Evaluator</title>
+    
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            background: var(--bg-surface);
+            backdrop-filter: var(--backdrop-blur);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem 2rem;
+            box-shadow: var(--shadow-xl);
+            text-align: center;
+        }
+        .login-logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-md);
+            background: var(--primary);
+            color: white;
+            font-weight: 800;
+            font-size: 1.75rem;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+            margin-bottom: 1.5rem;
+        }
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        .login-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            text-align: left;
+        }
+        .login-form .form-group {
+            gap: 0.5rem;
+        }
+        .login-error {
+            color: var(--danger);
+            background: var(--danger-bg);
+            border: 1px solid var(--danger-border);
+            padding: 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .back-to-site {
+            margin-top: 2rem;
+            display: inline-block;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+        }
+        .back-to-site:hover {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-logo">R</div>
+        <h1 class="login-title">Admin Login</h1>
+        <p class="login-subtitle">Secure access for database management</p>
+
+        <div id="loginError" class="login-error"></div>
+
+        <form id="loginForm" class="login-form">
+            <div class="form-group">
+                <label for="emailInput">Email Address</label>
+                <input type="email" id="emailInput" class="form-input" required placeholder="admin@example.com">
+            </div>
+            <div class="form-group">
+                <label for="passwordInput">Password</label>
+                <input type="password" id="passwordInput" class="form-input" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn btn-primary" id="loginBtn" style="width: 100%; margin-top: 0.5rem; padding: 0.85rem;">
+                <i class="fa-solid fa-lock"></i> Secure Login
+            </button>
+        </form>
+
+        <a href="index.html" class="back-to-site"><i class="fa-solid fa-arrow-left"></i> Return to Public Evaluator</a>
+    </div>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Apply theme
+            const savedTheme = localStorage.getItem('rank_rent_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+
+            // Check if already authenticated
+            await window.AuthService.requireNoAuth();
+
+            const loginForm = document.getElementById('loginForm');
+            const loginBtn = document.getElementById('loginBtn');
+            const errorDiv = document.getElementById('loginError');
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const email = document.getElementById('emailInput').value;
+                const password = document.getElementById('passwordInput').value;
+                
+                errorDiv.style.display = 'none';
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Authenticating...';
+
+                try {
+                    await window.AuthService.login(email, password);
+                    // On success, auth client persists token in localStorage and we redirect
+                    window.location.href = 'admin-dashboard.html';
+                } catch (error) {
+                    errorDiv.textContent = error.message || "Invalid login credentials.";
+                    errorDiv.style.display = 'block';
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Secure Login';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

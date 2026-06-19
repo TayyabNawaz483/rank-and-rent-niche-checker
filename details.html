@@ -360,6 +360,44 @@
         }
 
         function renderNicheDetails(niche) {
+            if (!niche) return;
+
+            // Normalize niche properties to ensure compatibility with older mock data / formats
+            niche.zip_codes = niche.zip_codes !== undefined ? niche.zip_codes : (niche.zips !== undefined ? niche.zips : 0);
+            niche.da_count = niche.da_count !== undefined ? niche.da_count : 0;
+            niche.gmb_count = niche.gmb_count !== undefined ? niche.gmb_count : 0;
+            niche.competitor_traffic = niche.competitor_traffic !== undefined ? niche.competitor_traffic : 0;
+            
+            // Normalize gmb_reviews
+            let reviews = niche.gmb_reviews;
+            if (!Array.isArray(reviews)) {
+                if (typeof reviews === 'string') {
+                    try {
+                        reviews = JSON.parse(reviews);
+                    } catch (e) {
+                        reviews = [];
+                    }
+                } else {
+                    reviews = [];
+                }
+            }
+            niche.gmb_reviews = reviews.map(r => parseInt(r) || 0);
+            while (niche.gmb_reviews.length < 3) {
+                niche.gmb_reviews.push(0);
+            }
+
+            // Normalize directory indicators
+            if (niche.directory_count === undefined) {
+                niche.directory_count = niche.has_directory ? 1 : 0;
+            }
+            niche.has_directory = niche.directory_count >= 1;
+
+            // Normalize R&R site indicators
+            if (niche.rr_site_count === undefined) {
+                niche.rr_site_count = niche.has_rr_site ? 1 : 0;
+            }
+            niche.has_rr_site = niche.rr_site_count >= 1;
+
             // Header
             document.getElementById('detailsNicheName').textContent = niche.niche;
             document.getElementById('detailsCity').textContent = niche.city + (niche.state ? ', ' + niche.state.toUpperCase() : '');
@@ -373,7 +411,7 @@
             document.getElementById('metaKd').textContent = niche.kd;
             document.getElementById('metaVolume').textContent = niche.volume;
             document.getElementById('metaPopulation').textContent = niche.population ? niche.population.toLocaleString() : 'Not Specified';
-            document.getElementById('metaZips').textContent = niche.zip_codes !== undefined ? niche.zip_codes : 'Not Specified';
+            document.getElementById('metaZips').textContent = niche.zip_codes;
             
             const dateStr = new Date(niche.created_at).toLocaleDateString(undefined, { 
                 month: 'long', 
@@ -403,13 +441,13 @@
             const checklistContainer = document.getElementById('checklistContainer');
             
             // Run evaluation logic again on client
-            const reviewsStr = niche.gmb_reviews ? niche.gmb_reviews.join(', ') : '0';
+            const reviewsStr = niche.gmb_reviews.join(', ');
             const rules = [
                 {
                     pass: niche.zip_codes >= 2,
                     name: "City Zip Codes",
                     desc: "The target city must have at least 2 zip codes.",
-                    val: `${niche.zip_codes || 0} Zips (Target: &ge;2)`
+                    val: `${niche.zip_codes} Zips (Target: &ge;2)`
                 },
                 {
                     pass: niche.kd <= 10,
@@ -444,8 +482,8 @@
                 {
                     pass: niche.has_directory === true,
                     name: "Directory Rankings",
-                    desc: "At least one major directories (Yelp, Houzz, etc.) must rank on page 1 of search results.",
-                    val: niche.has_directory ? "Yes" : "No"
+                    desc: "At least one major directory (Yelp, Houzz, etc.) must rank on page 1 of search results.",
+                    val: niche.directory_count > 0 ? `${niche.directory_count} in SERP (Target: &ge;1)` : (niche.has_directory ? "Yes" : "No")
                 },
                 {
                     pass: niche.competitor_traffic >= 50,
@@ -457,7 +495,7 @@
                     pass: niche.has_rr_site === true,
                     name: "Rank & Rent / EMD Availability",
                     desc: "A Rank & Rent or EMD (Exact Match Domain) site must already be ranking, proving viability.",
-                    val: niche.has_rr_site ? "Yes" : "No"
+                    val: niche.rr_site_count > 0 ? `${niche.rr_site_count} in SERP (Target: &ge;1)` : (niche.has_rr_site ? "Yes" : "No")
                 }
             ];
 

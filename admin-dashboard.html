@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Rank & Rent Evaluator</title>
+    
+    <link rel="stylesheet" href="styles.css?v=2">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .admin-layout {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .admin-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .admin-actions {
+            display: flex;
+            gap: 1rem;
+        }
+        .data-table-container {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow-x: auto;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        .data-table th, .data-table td {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        .data-table th {
+            background: var(--glass-bg);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .data-table tbody tr:hover {
+            background: var(--glass-hover);
+        }
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .checkbox-cell {
+            width: 40px;
+            text-align: center;
+        }
+        .action-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: color 0.2s;
+            padding: 0.25rem;
+        }
+        .action-btn:hover {
+            color: var(--danger);
+        }
+        .loading-state {
+            padding: 4rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+        .bulk-actions-bar {
+            display: none;
+            background: var(--primary);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius-lg);
+            margin-bottom: 1.5rem;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-lg);
+        }
+        .bulk-actions-bar.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">R</div>
+            <span>RankRent<span style="color: var(--primary);">Admin</span></span>
+        </a>
+        <div class="nav-actions">
+            <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Mode" style="padding: 0.5rem; width: 38px; height: 38px;">
+                <i class="fa-solid fa-sun" id="themeIcon"></i>
+            </button>
+            <button class="btn btn-secondary" id="logoutBtn">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+            </button>
+        </div>
+    </nav>
+
+    <main class="admin-layout">
+        <div class="admin-header">
+            <h1 class="admin-title">Database Management</h1>
+            <div class="admin-actions">
+                <button class="btn btn-secondary" id="exportCsvBtn">
+                    <i class="fa-solid fa-download"></i> Export All CSV
+                </button>
+            </div>
+        </div>
+
+        <div class="bulk-actions-bar" id="bulkActionsBar">
+            <div><strong id="selectedCount">0</strong> items selected</div>
+            <button class="btn btn-secondary" id="bulkDeleteBtn" style="border-color: rgba(255,255,255,0.3); color: white;">
+                <i class="fa-solid fa-trash"></i> Delete Selected
+            </button>
+        </div>
+
+        <div class="data-table-container">
+            <table class="data-table" id="dataTable">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell">
+                            <input type="checkbox" id="selectAllCheckbox">
+                        </th>
+                        <th>Status</th>
+                        <th>Niche</th>
+                        <th>City</th>
+                        <th>Keyword</th>
+                        <th>KD</th>
+                        <th>Volume</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="9" class="loading-state">
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                            <p style="margin-top: 1rem;">Loading database records...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Custom Delete Modal -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="delete-modal-content">
+            <div class="delete-modal-icon">
+                <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <h3>Delete Record</h3>
+            <p id="deleteModalMessage">Are you sure you want to delete this record forever? This action cannot be undone.</p>
+            
+            <!-- Written Confirmation Input Container -->
+            <div id="deleteModalConfirmInputContainer" style="display: none; margin: 1.5rem 0 1rem 0; text-align: left;">
+                <label for="deleteConfirmInput" style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 0.5rem; font-weight: 600;">Type <span style="color: var(--danger); font-weight: 800;">DELETE</span> to confirm:</label>
+                <input type="text" id="deleteConfirmInput" class="form-input" placeholder="DELETE" autocomplete="off" style="width: 100%; border-color: var(--border-color); text-transform: uppercase;">
+            </div>
+
+            <div class="delete-modal-actions">
+                <button class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmDeleteBtn" style="background: var(--danger);">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js?v=2"></script>
+    <script src="admin.js?v=2"></script>
+</body>
+</html>
