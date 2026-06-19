@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Niche Evaluation Details - Rank & Rent Evaluator</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .details-page-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            transition: color 0.2s;
+        }
+        .back-link:hover {
+            color: var(--primary);
+        }
+        .details-header-card {
+            background: var(--bg-surface);
+            backdrop-filter: var(--backdrop-blur);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        .details-title-group h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            text-transform: capitalize;
+            margin-bottom: 0.25rem;
+        }
+        .details-subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .details-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+        @media (max-width: 768px) {
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .card-panel {
+            background: var(--bg-surface);
+            backdrop-filter: var(--backdrop-blur);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+        .evaluation-checklist {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .checklist-item-detailed {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .checklist-item-detailed.pass {
+            border-left: 4px solid var(--success);
+        }
+        .checklist-item-detailed.fail {
+            border-left: 4px solid var(--danger);
+        }
+        .rule-left {
+            display: flex;
+            gap: 0.75rem;
+        }
+        .rule-status-icon {
+            margin-top: 0.15rem;
+            font-size: 1.1rem;
+        }
+        .rule-status-icon.pass { color: var(--success); }
+        .rule-status-icon.fail { color: var(--danger); }
+        .rule-name-desc {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+        .rule-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+        .rule-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .rule-value-badge {
+            padding: 0.25rem 0.65rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .reasons-list {
+            list-style-type: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+        .reasons-list li {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            line-height: 1.4;
+        }
+        .reasons-list li i {
+            color: var(--danger);
+            margin-top: 0.2rem;
+        }
+        .meta-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .meta-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            padding-bottom: 0.5rem;
+        }
+        .meta-label {
+            color: var(--text-secondary);
+        }
+        .meta-value {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="glow-blob"></div>
+    <div class="glow-blob-2"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">R</div>
+            <span>RankRent<span style="color: var(--primary);">Evaluator</span></span>
+        </a>
+        <div class="nav-actions">
+            <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Mode" style="padding: 0.5rem; width: 38px; height: 38px;">
+                <i class="fa-solid fa-sun" id="themeIcon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="details-page-container">
+        <!-- Back Button -->
+        <a href="index.html" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+
+        <!-- Niche Header Info -->
+        <section class="details-header-card" id="detailsHeaderCard">
+            <div class="details-title-group">
+                <h1 id="detailsNicheName">Loading Niche...</h1>
+                <div class="details-subtitle">
+                    <i class="fa-solid fa-location-dot" style="color: var(--primary);"></i>
+                    <span id="detailsCity">Loading City...</span>
+                </div>
+            </div>
+            <span class="status-badge" id="detailsStatus">LOADING</span>
+        </section>
+
+        <!-- Detailed Breakdown Grid -->
+        <div class="details-grid">
+            
+            <!-- Left Panel: Evaluation Checklist -->
+            <section class="card-panel">
+                <h2 class="panel-title">
+                    <i class="fa-solid fa-square-check" style="color: var(--primary);"></i>
+                    Evaluation Criteria Checklist
+                </h2>
+                
+                <div class="evaluation-checklist" id="checklistContainer">
+                    <!-- Dynamic rendering of evaluation details -->
+                </div>
+            </section>
+
+            <!-- Right Panel: Overview & Failure Reasons -->
+            <div>
+                <!-- Failure Reasons if Failed -->
+                <section class="card-panel" id="failureReasonsPanel" style="display: none;">
+                    <h2 class="panel-title" style="color: var(--danger);">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        Failure Reasons
+                    </h2>
+                    <ul class="reasons-list" id="failureReasonsList">
+                        <!-- Dynamic list of failure messages -->
+                    </ul>
+                </section>
+
+                <!-- Metadata Card -->
+                <section class="card-panel">
+                    <h2 class="panel-title">
+                        <i class="fa-solid fa-chart-simple" style="color: var(--secondary);"></i>
+                        Key Metrics
+                    </h2>
+                    <div class="meta-list" id="metaList">
+                        <div class="meta-item">
+                            <span class="meta-label">Primary Keyword</span>
+                            <span class="meta-value" id="metaKeyword">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Keyword Difficulty</span>
+                            <span class="meta-value" id="metaKd">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Search Volume</span>
+                            <span class="meta-value" id="metaVolume">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">City Population</span>
+                            <span class="meta-value" id="metaPopulation">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">City Zip Codes</span>
+                            <span class="meta-value" id="metaZips">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Evaluation Date</span>
+                            <span class="meta-value" id="metaDate">-</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Supabase Client Library CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            const urlParams = new URLSearchParams(window.location.search);
+            const nicheId = urlParams.get('id');
+            
+            if (!nicheId) {
+                alert('No evaluation ID specified.');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            loadNicheDetails(nicheId);
+        });
+
+        function initTheme() {
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            const themeIcon = document.getElementById('themeIcon');
+            
+            const savedTheme = localStorage.getItem('rank_rent_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+
+            if (themeToggleBtn) {
+                themeToggleBtn.addEventListener('click', () => {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('rank_rent_theme', newTheme);
+                    updateThemeIcon(newTheme);
+                });
+            }
+        }
+
+        function updateThemeIcon(theme) {
+            const themeIcon = document.getElementById('themeIcon');
+            if (themeIcon) {
+                themeIcon.className = theme === 'light' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+            }
+        }
+
+        async function loadNicheDetails(id) {
+            let niche = null;
+            
+            // Try to connect to Supabase
+            const url = localStorage.getItem('supabase_url') || 'https://vbxxwiqkyjijqlloyhsz.supabase.co';
+            const key = localStorage.getItem('supabase_key') || 'sb_publishable_CpOBGqQsKggJ7VejenxLBw_Coy6fMgS';
+            
+            if (url && key && window.supabase) {
+                try {
+                    const supabaseClient = window.supabase.createClient(url, key);
+                    const { data, error } = await supabaseClient
+                        .from('niches')
+                        .select('*')
+                        .eq('id', id)
+                        .single();
+
+                    if (!error && data) {
+                        niche = data;
+                    }
+                } catch (e) {
+                    console.error("Supabase load details failed: ", e);
+                }
+            }
+
+            // Fallback to localStorage
+            if (!niche) {
+                const local = localStorage.getItem('rank_rent_niches');
+                const niches = local ? JSON.parse(local) : [];
+                niche = niches.find(item => item.id == id);
+            }
+
+            if (!niche) {
+                document.getElementById('detailsNicheName').textContent = 'Niche Not Found';
+                document.getElementById('detailsCity').textContent = 'The requested niche evaluation does not exist.';
+                document.getElementById('detailsStatus').className = 'status-badge fail';
+                document.getElementById('detailsStatus').textContent = 'ERROR';
+                return;
+            }
+
+            renderNicheDetails(niche);
+        }
+
+        function renderNicheDetails(niche) {
+            // Header
+            document.getElementById('detailsNicheName').textContent = niche.niche;
+            document.getElementById('detailsCity').textContent = niche.city + (niche.state ? ', ' + niche.state.toUpperCase() : '');
+            
+            const statusEl = document.getElementById('detailsStatus');
+            statusEl.textContent = niche.status;
+            statusEl.className = niche.status === 'PASS' ? 'status-badge pass' : 'status-badge fail';
+
+            // Meta Info
+            document.getElementById('metaKeyword').textContent = niche.keyword || '-';
+            document.getElementById('metaKd').textContent = niche.kd;
+            document.getElementById('metaVolume').textContent = niche.volume;
+            document.getElementById('metaPopulation').textContent = niche.population ? niche.population.toLocaleString() : 'Not Specified';
+            document.getElementById('metaZips').textContent = niche.zip_codes !== undefined ? niche.zip_codes : 'Not Specified';
+            
+            const dateStr = new Date(niche.created_at).toLocaleDateString(undefined, { 
+                month: 'long', 
+                day: 'numeric', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('metaDate').textContent = dateStr;
+
+            // Failure reasons
+            const failurePanel = document.getElementById('failureReasonsPanel');
+            const failureList = document.getElementById('failureReasonsList');
+            if (niche.status === 'FAIL' && niche.fail_reasons && niche.fail_reasons.length > 0) {
+                failurePanel.style.display = 'block';
+                failureList.innerHTML = niche.fail_reasons.map(reason => `
+                    <li>
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>${escapeHtml(reason)}</span>
+                    </li>
+                `).join('');
+            } else {
+                failurePanel.style.display = 'none';
+            }
+
+            // Checklist
+            const checklistContainer = document.getElementById('checklistContainer');
+            
+            // Run evaluation logic again on client
+            const reviewsStr = niche.gmb_reviews ? niche.gmb_reviews.join(', ') : '0';
+            const rules = [
+                {
+                    pass: niche.zip_codes >= 2,
+                    name: "City Zip Codes",
+                    desc: "The target city must have at least 2 zip codes.",
+                    val: `${niche.zip_codes || 0} Zips (Target: &ge;2)`
+                },
+                {
+                    pass: niche.kd <= 10,
+                    name: "Keyword Difficulty (KD)",
+                    desc: "Keyword Difficulty must be 10 or less to ensure beatable competition.",
+                    val: `${niche.kd} KD (Target: &le;10)`
+                },
+                {
+                    pass: niche.volume >= 100,
+                    name: "Search Volume",
+                    desc: "Monthly search volume must be at least 100.",
+                    val: `${niche.volume} / mo (Target: &ge;100)`
+                },
+                {
+                    pass: niche.da_count >= 4,
+                    name: "Low Domain Authority (DA) Sites",
+                    desc: "At least 4 to 5 sites in the top 10 search results must have a DA under 10.",
+                    val: `${niche.da_count} sites (Target: &ge;4)`
+                },
+                {
+                    pass: niche.gmb_reviews.every(r => r <= 100),
+                    name: "Local Map Pack Reviews",
+                    desc: "Top GMB business reviews must all be 100 or less to ensure rankings are beatable.",
+                    val: `[${reviewsStr}] reviews (Target: all &le; 100)`
+                },
+                {
+                    pass: niche.gmb_count >= 10,
+                    name: "GMB Abundance in Area",
+                    desc: "There must be at least 10 to 15 active GMB locations in the city.",
+                    val: `${niche.gmb_count} GMBs (Target: &ge;10)`
+                },
+                {
+                    pass: niche.has_directory === true,
+                    name: "Directory Rankings",
+                    desc: "At least one major directories (Yelp, Houzz, etc.) must rank on page 1 of search results.",
+                    val: niche.has_directory ? "Yes" : "No"
+                },
+                {
+                    pass: niche.competitor_traffic >= 50,
+                    name: "Traffic Distribution",
+                    desc: "Top organic competitors should average at least 50 monthly visitors.",
+                    val: `${niche.competitor_traffic} visits (Target: &ge;50)`
+                },
+                {
+                    pass: niche.has_rr_site === true,
+                    name: "Rank & Rent / EMD Availability",
+                    desc: "A Rank & Rent or EMD (Exact Match Domain) site must already be ranking, proving viability.",
+                    val: niche.has_rr_site ? "Yes" : "No"
+                }
+            ];
+
+            checklistContainer.innerHTML = rules.map(rule => `
+                <div class="checklist-item-detailed ${rule.pass ? 'pass' : 'fail'}">
+                    <div class="rule-left">
+                        <i class="rule-status-icon ${rule.pass ? 'fa-solid fa-circle-check pass' : 'fa-solid fa-circle-xmark fail'}"></i>
+                        <div class="rule-name-desc">
+                            <span class="rule-name">${rule.name}</span>
+                            <span class="rule-desc">${rule.desc}</span>
+                        </div>
+                    </div>
+                    <span class="rule-value-badge">${rule.val}</span>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

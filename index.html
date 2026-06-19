@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rank & Rent Niche Evaluator - Senior SEO Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome CDN for premium icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="glow-blob"></div>
+    <div class="glow-blob-2"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="#" class="logo">
+            <div class="logo-icon">R</div>
+            <span>RankRent<span style="color: var(--primary);">Evaluator</span></span>
+        </a>
+        <div class="nav-actions">
+            <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Mode" style="padding: 0.5rem; width: 38px; height: 38px;">
+                <i class="fa-solid fa-sun" id="themeIcon"></i>
+            </button>
+            <button class="btn btn-primary" id="openAddModalBtn">
+                <i class="fa-solid fa-plus"></i> Add Niche Data
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Container -->
+    <main class="dashboard-container">
+        
+        <!-- Stats Row -->
+        <section class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-icon-wrapper">
+                    <i class="fa-solid fa-folder-open fa-lg"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Analysed</span>
+                    <span class="stat-value" id="statTotal">0</span>
+                </div>
+            </div>
+            <div class="stat-card passed">
+                <div class="stat-icon-wrapper">
+                    <i class="fa-solid fa-circle-check fa-lg"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Passed Niches</span>
+                    <span class="stat-value" id="statPassed">0</span>
+                </div>
+            </div>
+            <div class="stat-card failed">
+                <div class="stat-icon-wrapper">
+                    <i class="fa-solid fa-circle-xmark fa-lg"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Failed Niches</span>
+                    <span class="stat-value" id="statFailed">0</span>
+                </div>
+            </div>
+            <div class="stat-card total" style="--primary: var(--secondary)">
+                <div class="stat-icon-wrapper" style="color: var(--secondary)">
+                    <i class="fa-solid fa-chart-pie fa-lg"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Pass Ratio</span>
+                    <span class="stat-value" id="statRatio">0%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters Section -->
+        <section class="filter-bar">
+            <div class="filter-group">
+                <label for="searchNiche">Search Keyword</label>
+                <input type="text" id="searchNiche" class="filter-input" placeholder="e.g. plumber, orlando...">
+            </div>
+            <div class="filter-group">
+                <label for="filterState">Select State</label>
+                <select id="filterState" class="filter-input">
+                    <option value="all">All States</option>
+                    <option value="al">AL - Alabama</option>
+                    <option value="ak">AK - Alaska</option>
+                    <option value="az">AZ - Arizona</option>
+                    <option value="ar">AR - Arkansas</option>
+                    <option value="ca">CA - California</option>
+                    <option value="co">CO - Colorado</option>
+                    <option value="ct">CT - Connecticut</option>
+                    <option value="de">DE - Delaware</option>
+                    <option value="fl">FL - Florida</option>
+                    <option value="ga">GA - Georgia</option>
+                    <option value="hi">HI - Hawaii</option>
+                    <option value="id">ID - Idaho</option>
+                    <option value="il">IL - Illinois</option>
+                    <option value="in">IN - Indiana</option>
+                    <option value="ia">IA - Iowa</option>
+                    <option value="ks">KS - Kansas</option>
+                    <option value="ky">KY - Kentucky</option>
+                    <option value="la">LA - Louisiana</option>
+                    <option value="me">ME - Maine</option>
+                    <option value="md">MD - Maryland</option>
+                    <option value="ma">MA - Massachusetts</option>
+                    <option value="mi">MI - Michigan</option>
+                    <option value="mn">MN - Minnesota</option>
+                    <option value="ms">MS - Mississippi</option>
+                    <option value="mo">MO - Missouri</option>
+                    <option value="mt">MT - Montana</option>
+                    <option value="ne">NE - Nebraska</option>
+                    <option value="nv">NV - Nevada</option>
+                    <option value="nh">NH - New Hampshire</option>
+                    <option value="nj">NJ - New Jersey</option>
+                    <option value="nm">NM - New Mexico</option>
+                    <option value="ny">NY - New York</option>
+                    <option value="nc">NC - North Carolina</option>
+                    <option value="nd">ND - North Dakota</option>
+                    <option value="oh">OH - Ohio</option>
+                    <option value="ok">OK - Oklahoma</option>
+                    <option value="or">OR - Oregon</option>
+                    <option value="pa">PA - Pennsylvania</option>
+                    <option value="ri">RI - Rhode Island</option>
+                    <option value="sc">SC - South Carolina</option>
+                    <option value="sd">SD - South Dakota</option>
+                    <option value="tn">TN - Tennessee</option>
+                    <option value="tx">TX - Texas</option>
+                    <option value="ut">UT - Utah</option>
+                    <option value="vt">VT - Vermont</option>
+                    <option value="va">VA - Virginia</option>
+                    <option value="wa">WA - Washington</option>
+                    <option value="wv">WV - West Virginia</option>
+                    <option value="wi">WI - Wisconsin</option>
+                    <option value="wy">WY - Wyoming</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterNiche">Select Niche</label>
+                <select id="filterNiche" class="filter-input">
+                    <option value="all">All Niches</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterCity">Select City</label>
+                <select id="filterCity" class="filter-input">
+                    <option value="all">All Cities</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="filterZips">Min Zip Codes</label>
+                <input type="number" id="filterZips" class="filter-input" min="0" placeholder="e.g. 2">
+            </div>
+            <div class="filter-group">
+                <label>Filter By Status</label>
+                <div class="status-pill-container">
+                    <button class="status-pill active" data-status="all">All</button>
+                    <button class="status-pill" data-status="pass">Passed</button>
+                    <button class="status-pill" data-status="fail">Failed</button>
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Export Tools</label>
+                <div class="status-pill-container">
+                    <button class="status-pill" id="exportCsvBtn" style="display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; width: 100%;">
+                        <i class="fa-solid fa-file-csv"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Cards Grid -->
+        <section class="niche-grid" id="nicheGrid">
+            <!-- Cards will be dynamically inserted here by JavaScript -->
+            <div class="no-results">
+                <div class="no-results-icon">
+                    <i class="fa-solid fa-database"></i>
+                </div>
+                <h3>No Data Available</h3>
+                <p>Click "Add Niche Data" to evaluate your first Rank and Rent niche!</p>
+            </div>
+        </section>
+
+        <!-- Collapsible How it Works Explainer -->
+        <section class="info-accordion">
+            <div class="info-accordion-header" id="accordionHeader">
+                <div class="info-accordion-title">
+                    <i class="fa-solid fa-circle-info" style="color: var(--primary)"></i>
+                    <span>How it Works & Logic Behind Evaluation</span>
+                </div>
+                <i class="fa-solid fa-chevron-down" id="accordionArrow" style="transition: transform 0.2s"></i>
+            </div>
+            <div class="info-accordion-content" id="accordionContent">
+                <div class="info-accordion-body">
+                    <div class="info-column">
+                        <h4><i class="fa-solid fa-circle-check"></i> Rank and Rent Validation Logic</h4>
+                        <ul>
+                            <li>
+                                <i class="fa-solid fa-square-poll-vertical"></i>
+                                <div><strong>Keyword Difficulty (KD):</strong> Must be <strong>10 or less</strong> to ensure rankings are beatable (KD &le; 10).</div>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-chart-line"></i>
+                                <div><strong>Search Volume:</strong> Must be at least <strong>100</strong>. Volume below 100 is considered invalid.</div>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-award"></i>
+                                <div><strong>Low DA Competitors:</strong> At least <strong>4 to 5 sites</strong> in the top SERP must have a Domain Authority (DA) <strong>below 10</strong>.</div>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-map-location-dot"></i>
+                                <div><strong>GMB Reviews:</strong> All Map Pack GMB reviews must be <strong>100 or less</strong> (Reviews &le; 100). Single GMBs > 100 indicates high local dominance.</div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="info-column">
+                        <h4><i class="fa-solid fa-gears"></i> Technical Criteria</h4>
+                        <ul>
+                            <li>
+                                <i class="fa-solid fa-store"></i>
+                                <div><strong>GMB Abundance:</strong> There must be at least **10 to 15 GMBs** active in the target area.</div>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-address-book"></i>
+                                <div><strong>Directories Presence:</strong> At least one major directory (Yelp, YellowPages, etc.) must rank on page 1, proving search space availability.</div>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-traffic-light"></i>
+                                <div><strong>Traffic Distribution:</strong> Target competitors must have traffic of at least <strong>50</strong> visitors/mo (Traffic &ge; 50).</div>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-globe"></i>
+                                <div><strong>Existing R&R / EMD / Micro Site:</strong> A Rank & Rent, EMD (Exact Match Domain), or Micro Site must already exist/be active in the SERP, confirming proof-of-concept.</div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Form: Add Niche Data -->
+    <div class="modal-overlay" id="addModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fa-solid fa-plus-minus" style="color: var(--primary); margin-right: 0.5rem;"></i> Evaluate New Niche</h3>
+                <button class="modal-close" id="closeAddModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="form-split-layout">
+                <!-- Left: Form inputs -->
+                <form id="nicheForm" class="modal-form-content">
+                    <div class="form-group-row" style="grid-template-columns: 1.2fr 1.2fr 0.6fr;">
+                        <div class="form-group">
+                            <label for="nicheInput">Niche Name</label>
+                            <input type="text" id="nicheInput" class="form-input" required autocomplete="off">
+                            <div class="suggestions-container" id="nicheSuggestions">
+                                <span class="suggestion-tag">plumbing</span>
+                                <span class="suggestion-tag">pest control</span>
+                                <span class="suggestion-tag">roofing</span>
+                                <span class="suggestion-tag">towing</span>
+                                <span class="suggestion-tag">tree service</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="cityInput">City / Area</label>
+                            <input type="text" id="cityInput" class="form-input" required autocomplete="off">
+                            <div class="suggestions-container" id="citySuggestions">
+                                <span class="suggestion-tag">Dallas</span>
+                                <span class="suggestion-tag">Miami</span>
+                                <span class="suggestion-tag">Houston</span>
+                                <span class="suggestion-tag">Orlando</span>
+                                <span class="suggestion-tag">Chicago</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="stateInput">State</label>
+                            <select id="stateInput" class="form-input" required>
+                                <option value="" disabled selected>Select State</option>
+                                <option value="AL">AL - Alabama</option>
+                                <option value="AK">AK - Alaska</option>
+                                <option value="AZ">AZ - Arizona</option>
+                                <option value="AR">AR - Arkansas</option>
+                                <option value="CA">CA - California</option>
+                                <option value="CO">CO - Colorado</option>
+                                <option value="CT">CT - Connecticut</option>
+                                <option value="DE">DE - Delaware</option>
+                                <option value="FL">FL - Florida</option>
+                                <option value="GA">GA - Georgia</option>
+                                <option value="HI">HI - Hawaii</option>
+                                <option value="ID">ID - Idaho</option>
+                                <option value="IL">IL - Illinois</option>
+                                <option value="IN">IN - Indiana</option>
+                                <option value="IA">IA - Iowa</option>
+                                <option value="KS">KS - Kansas</option>
+                                <option value="KY">KY - Kentucky</option>
+                                <option value="LA">LA - Louisiana</option>
+                                <option value="ME">ME - Maine</option>
+                                <option value="MD">MD - Maryland</option>
+                                <option value="MA">MA - Massachusetts</option>
+                                <option value="MI">MI - Michigan</option>
+                                <option value="MN">MN - Minnesota</option>
+                                <option value="MS">MS - Mississippi</option>
+                                <option value="MO">MO - Missouri</option>
+                                <option value="MT">MT - Montana</option>
+                                <option value="NE">NE - Nebraska</option>
+                                <option value="NV">NV - Nevada</option>
+                                <option value="NH">NH - New Hampshire</option>
+                                <option value="NJ">NJ - New Jersey</option>
+                                <option value="NM">NM - New Mexico</option>
+                                <option value="NY">NY - New York</option>
+                                <option value="NC">NC - North Carolina</option>
+                                <option value="ND">ND - North Dakota</option>
+                                <option value="OH">OH - Ohio</option>
+                                <option value="OK">OK - Oklahoma</option>
+                                <option value="OR">OR - Oregon</option>
+                                <option value="PA">PA - Pennsylvania</option>
+                                <option value="RI">RI - Rhode Island</option>
+                                <option value="SC">SC - South Carolina</option>
+                                <option value="SD">SD - South Dakota</option>
+                                <option value="TN">TN - Tennessee</option>
+                                <option value="TX">TX - Texas</option>
+                                <option value="UT">UT - Utah</option>
+                                <option value="VT">VT - Vermont</option>
+                                <option value="VA">VA - Virginia</option>
+                                <option value="WA">WA - Washington</option>
+                                <option value="WV">WV - West Virginia</option>
+                                <option value="WI">WI - Wisconsin</option>
+                                <option value="WY">WY - Wyoming</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group-row" style="grid-template-columns: 2fr 1fr 1fr;">
+                        <div class="form-group">
+                            <label for="keywordInput">Primary Target Keyword</label>
+                            <input type="text" id="keywordInput" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="populationInput">City Population</label>
+                            <input type="number" id="populationInput" class="form-input" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="zipsInput">City Zip Codes</label>
+                            <input type="number" id="zipsInput" class="form-input" min="0" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="kdInput">Keyword Difficulty (KD)</label>
+                            <input type="number" id="kdInput" class="form-input" min="0" max="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="volumeInput">Search Volume</label>
+                            <input type="number" id="volumeInput" class="form-input" min="0" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="daCountInput">SERP Sites with DA &lt; 10 (Count)</label>
+                        <input type="number" id="daCountInput" class="form-input" min="0" max="10" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Top 3 GMB Review Counts in Map Pack</label>
+                        <div class="form-group-row">
+                            <input type="number" id="gmbReview1" class="form-input" min="0" required>
+                            <input type="number" id="gmbReview2" class="form-input" min="0" required>
+                            <input type="number" id="gmbReview3" class="form-input" min="0" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="gmbCountInput">Total GMBs in Area</label>
+                            <input type="number" id="gmbCountInput" class="form-input" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="competitorTrafficInput">Competitor Traffic</label>
+                            <input type="number" id="competitorTrafficInput" class="form-input" min="0" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="gap: 0.8rem; margin-top: 0.25rem;">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="hasDirectoryCheckbox">
+                            <label for="hasDirectoryCheckbox">Major Business Directory rankings in SERP?</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="hasRrSiteCheckbox">
+                            <label for="hasRrSiteCheckbox">Rank & Rent / EMD / Micro Site available in SERPs?</label>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Right: Real-time validation checklist -->
+                <div class="modal-evaluation-panel">
+                    <div class="live-eval-header">
+                        <span class="live-eval-title">Live Evaluation</span>
+                        <span class="live-status-indicator pending" id="liveStatusIndicator">PENDING</span>
+                    </div>
+
+                    <div class="live-eval-list">
+                        <div class="live-eval-item" id="evalKd">
+                            <span class="eval-label">
+                                <i class="fa-solid fa-circle-question eval-icon pending"></i>
+                                Keyword Difficulty (KD &le; 10)
+                            </span>
+                            <span class="eval-status-val text-muted" id="evalKdVal">-</span>
+                        </div>
+                        <div class="live-eval-item" id="evalVolume">
+                            <span class="eval-label">
+                                <i class="fa-solid fa-circle-question eval-icon pending"></i>
+                                Search Volume (&ge; 100)
+                            </span>
+                            <span class="eval-status-val text-muted" id="evalVolumeVal">-</span>
+                        </div>
+                        <div class="live-eval-item" id="evalZips">
+                            <span class="eval-label">
+                                <i class="fa-solid fa-circle-question eval-icon pending"></i>
+                                City Zip Codes (&ge; 2)
+                            </span>
+                            <span class="eval-status-val text-muted" id="evalZipsVal">-</span>
+                        </div>
+                        <div class="live-eval-item" id="evalDa">
+                            <span class="eval-label">
+                                <i class="fa-solid fa-circle-question eval-icon pending"></i>
+                                SERP Sites DA &lt; 10 Count (&ge; 4)
+                            </span>
+                            <span class="eval-status-val text-muted" id="evalDaVal">-</span>
+                        </div>
+                        <div class="live-eval-item" id="evalGmbReviews">
+                            <span class="eval-label">
+                                <i class="fa-solid fa-circle-question eval-icon pending"></i>
+                                Map Pack GMB Reviews (&le; 100)
+                            </span>
+                            <span class="eval-status-val text-muted" id="evalGmbReviewsVal">-</span>
+                        </div>
+                        <div class="live-eval-item" id="evalGmbCount">
+                            <span class="eval-label">
+                                <i class="fa-solid fa-circle-question eval-icon pending"></i>
+                                GMB Abundance (&ge; 10)
+                            </span>
+                            <span class="eval-status-val text-muted" id="evalGmbCountVal">-</span>
+                        </div>
+                        <div class="live-eval-item" id="evalDirectory">
+                            <span class="eval-label">
+                                <i class="fa-solid fa-circle-question eval-icon pending"></i>
+                                Directory in SERP (Yes)
+                            </span>
+                            <span class="eval-status-val text-muted" id="evalDirectoryVal">-</span>
+                        </div>
+                        <div class="live-eval-item" id="evalTraffic">
+                            <span class="eval-label">
+                                <i class="fa-solid fa-circle-question eval-icon pending"></i>
+                                Competitor Traffic (&ge; 50)
+                            </span>
+                            <span class="eval-status-val text-muted" id="evalTrafficVal">-</span>
+                        </div>
+                        <div class="live-eval-item" id="evalRrSite">
+                            <span class="eval-label">
+                                <i class="fa-solid fa-circle-question eval-icon pending"></i>
+                                R&R / EMD Site Available (Yes)
+                            </span>
+                            <span class="eval-status-val text-muted" id="evalRrSiteVal">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelAddBtn">Cancel</button>
+                <button class="btn btn-primary" id="saveNicheBtn">Save & Evaluate</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Supabase Client Library CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
