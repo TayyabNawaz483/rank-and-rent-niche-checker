@@ -56,7 +56,7 @@
             </div>
         </div>
 
-        <div class="funnel-content-grid">
+        <div style="display: flex; flex-direction: column; gap: 2rem;">
             <!-- Main Content Area: Directory List -->
             <div class="funnel-main">
                 <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.5rem; overflow: hidden; box-shadow: var(--shadow-md);">
@@ -86,6 +86,16 @@
                                 <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
                                 <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
                                 <option value="WI">WI</option><option value="WY">WY</option>
+                            </select>
+                        </div>
+                        <div style="min-width: 150px;">
+                            <select id="nicheFilter" class="form-input">
+                                <option value="all">All Niches</option>
+                            </select>
+                        </div>
+                        <div style="min-width: 150px;">
+                            <select id="cityFilter" class="form-input">
+                                <option value="all">All Cities</option>
                             </select>
                         </div>
                     </div>

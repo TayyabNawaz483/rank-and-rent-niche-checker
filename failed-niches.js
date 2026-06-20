@@ -114,6 +114,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Filter listeners
     document.getElementById('searchInput').addEventListener('input', renderTable);
     document.getElementById('stateFilter').addEventListener('change', renderTable);
+    if(document.getElementById('nicheFilter')) document.getElementById('nicheFilter').addEventListener('change', renderTable);
+    if(document.getElementById('cityFilter')) document.getElementById('cityFilter').addEventListener('change', renderTable);
 
     // Initial data fetch
     await fetchFailedNiches();
@@ -136,6 +138,7 @@ async function fetchFailedNiches() {
 
         if (error) throw error;
         failedData = data || [];
+        populateFilters();
         renderTable();
     } catch (error) {
         console.warn("Supabase fetch failed, falling back to LocalStorage:", error);
@@ -147,7 +150,40 @@ async function fetchFailedNiches() {
 function loadLocalFailedNiches() {
     const local = localStorage.getItem('rank_rent_failed_niches');
     failedData = local ? JSON.parse(local) : getMockFailedData();
+    populateFilters();
     renderTable();
+}
+
+// Populate niche and city filters
+function populateFilters() {
+    const nicheSelect = document.getElementById('nicheFilter');
+    const citySelect = document.getElementById('cityFilter');
+    if (!nicheSelect || !citySelect) return;
+
+    const niches = new Set();
+    const cities = new Set();
+
+    failedData.forEach(item => {
+        if (item.niche) niches.add(item.niche);
+        if (item.city) cities.add(item.city);
+    });
+
+    nicheSelect.innerHTML = '<option value="all">All Niches</option>';
+    citySelect.innerHTML = '<option value="all">All Cities</option>';
+
+    Array.from(niches).sort().forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n;
+        opt.textContent = n;
+        nicheSelect.appendChild(opt);
+    });
+
+    Array.from(cities).sort().forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        citySelect.appendChild(opt);
+    });
 }
 
 // Fallback mock data
@@ -188,6 +224,8 @@ function renderTable() {
 
     const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
     const stateFilter = document.getElementById('stateFilter').value;
+    const nicheFilter = document.getElementById('nicheFilter') ? document.getElementById('nicheFilter').value : 'all';
+    const cityFilter = document.getElementById('cityFilter') ? document.getElementById('cityFilter').value : 'all';
 
     const filtered = failedData.filter(item => {
         const matchesSearch = 
@@ -197,8 +235,10 @@ function renderTable() {
             (item.created_by && item.created_by.toLowerCase().includes(searchQuery));
 
         const matchesState = stateFilter === 'all' || item.state === stateFilter;
+        const matchesNiche = nicheFilter === 'all' || item.niche === nicheFilter;
+        const matchesCity = cityFilter === 'all' || item.city === cityFilter;
 
-        return matchesSearch && matchesState;
+        return matchesSearch && matchesState && matchesNiche && matchesCity;
     });
 
     if (filtered.length === 0) {
