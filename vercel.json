@@ -1,14 +1,14 @@
 {
   "cleanUrls": true,
   "routes": [
-    { "src": "/stage1", "dest": "/funnel.html" },
-    { "src": "/stage2", "dest": "/funnel.html" },
-    { "src": "/stage3", "dest": "/funnel.html" },
-    { "src": "/stage4", "dest": "/funnel.html" },
-    { "src": "/funnel-login", "dest": "/funnel-login.html" },
-    { "src": "/admin", "dest": "/admin-login.html" },
-    { "src": "/admin-dashboard", "dest": "/admin-dashboard.html" },
-    { "src": "/sheet", "dest": "/index.html" },
-    { "src": "/failed", "dest": "/failed-niches.html" }
+    { "src": "/stage1", "dest": "/funnel" },
+    { "src": "/stage2", "dest": "/funnel" },
+    { "src": "/stage3", "dest": "/funnel" },
+    { "src": "/stage4", "dest": "/funnel" },
+    { "src": "/funnel-login", "dest": "/funnel-login" },
+    { "src": "/admin", "dest": "/admin-login" },
+    { "src": "/admin-dashboard", "dest": "/admin-dashboard" },
+    { "src": "/sheet", "dest": "/" },
+    { "src": "/failed", "dest": "/failed-niches" }
   ]
 }
