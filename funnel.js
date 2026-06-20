@@ -573,28 +573,53 @@
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
 
+        // Split keywords: volume >= 50 (or null) pass, volume < 50 fail
+        const passingKeywords = newKeywords.filter(p => p.volume === null || p.volume === undefined || p.volume >= 50);
+        const failedKeywords = newKeywords.filter(p => p.volume !== null && p.volume !== undefined && p.volume < 50);
+
         const batchId = generateId();
         const now = new Date().toISOString();
 
-        const rows = newKeywords.map(p => {
-            const city = extractCity(p.keyword, niche);
-            return {
-                id: generateId(),
-                keyword: p.keyword,
-                niche: niche,
-                city: city,
-                state: state || null,
-                volume: p.volume,
-                stage: 1,
-                batch_id: batchId,
-                batch_label: `${niche} — ${new Date().toLocaleDateString()}`,
-                status: 'pending',
-                stage_1_at: now,
-                created_at: now
-            };
-        });
+        // Insert passing keywords into pipeline
+        if (passingKeywords.length > 0) {
+            const rows = passingKeywords.map(p => {
+                const city = extractCity(p.keyword, niche);
+                return {
+                    id: generateId(),
+                    keyword: p.keyword,
+                    niche: niche,
+                    city: city,
+                    state: state || null,
+                    volume: p.volume,
+                    stage: 1,
+                    batch_id: batchId,
+                    batch_label: `${niche} — ${new Date().toLocaleDateString()}`,
+                    status: 'pending',
+                    stage_1_at: now,
+                    created_at: now
+                };
+            });
+            await insertPipelineRows(rows);
+        }
 
-        await insertPipelineRows(rows);
+        // Save failed keywords (volume < 50) to failed_niches
+        if (failedKeywords.length > 0) {
+            const failedRows = failedKeywords.map(p => {
+                const city = extractCity(p.keyword, niche);
+                return {
+                    keyword: p.keyword,
+                    niche: niche,
+                    city: city,
+                    state: state || null,
+                    volume: p.volume || 0,
+                    failed_stage: 1,
+                    fail_reason: `Volume too low (${p.volume} < 50)`,
+                    created_at: now
+                };
+            });
+            await saveFailedNiches(failedRows);
+            showToast(`⚠️ ${failedKeywords.length} keyword(s) failed (volume < 50)`, 'warning');
+        }
 
         // Reset form
         textarea.value = '';
@@ -605,7 +630,11 @@
         submitBtn.innerHTML = '<i class="fa-solid fa-rocket"></i> Submit to Pipeline';
         window._stage1NewKeywords = null;
 
-        showToast(`${rows.length} keywords submitted to pipeline!`, 'success');
+        if (passingKeywords.length > 0) {
+            showToast(`${passingKeywords.length} keywords submitted to pipeline!`, 'success');
+        } else {
+            showToast('No keywords passed the volume filter (≥ 50)', 'error');
+        }
         updateAllViews();
     }
 
@@ -1031,6 +1060,29 @@
             checked_at: new Date().toISOString()
         });
 
+        // ─── Capture unmatched batch keywords as failed niches ───
+        const batchRows = allPipelineData.filter(
+            r => r.batch_id === selectedBatchId
+        );
+        const matchedIds = new Set(matched.map(m => m.id));
+        const unmatchedRows = batchRows.filter(r => !matchedIds.has(r.id));
+
+        if (unmatchedRows.length > 0) {
+            const now = new Date().toISOString();
+            const failedRows = unmatchedRows.map(r => ({
+                keyword: r.keyword,
+                niche: r.niche,
+                city: r.city,
+                state: r.state || null,
+                volume: r.volume || 0,
+                failed_stage: stageNum,
+                fail_reason: `Did not pass Stage ${stageNum} check`,
+                created_at: now
+            }));
+            await saveFailedNiches(failedRows);
+            showToast(`⚠️ ${unmatchedRows.length} keyword(s) marked as failed at Stage ${stageNum}`, 'warning');
+        }
+
         if (stageNum === 4) {
             // Stage 4: Save to main niches table
             await saveFinalToNiches(matched);
@@ -1140,6 +1192,37 @@
         if (notes.stage_4) result.stage_4 = notes.stage_4.text;
 
         return Object.keys(result).length > 0 ? result : null;
+    }
+
+    // ─── Save failed niches to failed_niches table ───
+    async function saveFailedNiches(rows) {
+        if (!rows || rows.length === 0) return;
+
+        let savedToSupabase = false;
+        if (supabase) {
+            try {
+                const { error } = await supabase.from('failed_niches').insert(rows);
+                if (error) {
+                    console.error('Supabase failed_niches insert error:', error);
+                    throw error;
+                }
+                savedToSupabase = true;
+            } catch (e) {
+                console.warn('Supabase failed_niches insert failed, falling back to LocalStorage:', e);
+            }
+        }
+
+        // Always save to localStorage fallback
+        if (!savedToSupabase) {
+            try {
+                const existing = JSON.parse(localStorage.getItem('rank_rent_failed_niches') || '[]');
+                const withIds = rows.map(r => ({ ...r, id: r.id || generateId() }));
+                localStorage.setItem('rank_rent_failed_niches', JSON.stringify([...withIds, ...existing]));
+                console.log('Saved failed niches to LocalStorage fallback');
+            } catch (err) {
+                console.error('Failed to save failed niches to LocalStorage:', err);
+            }
+        }
     }
 
     // Save final keywords to main niches table

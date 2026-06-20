@@ -572,7 +572,7 @@ function exportAdminCSV() {
         }
 
         const headers = [
-            "Niche", "City", "Keyword", "State", "Added By", "Date Added"
+            "Niche", "City", "Keyword", "State", "Volume", "Failed Stage", "Fail Reason", "Added By", "Date Added"
         ];
 
         const rows = failedDbData.map(item => [
@@ -580,6 +580,9 @@ function exportAdminCSV() {
             `"${item.city || ''}"`,
             `"${item.keyword}"`,
             item.state || "",
+            item.volume || 0,
+            item.failed_stage ? `Stage ${item.failed_stage}` : 'Unknown',
+            `"${item.fail_reason || ''}"`,
             `"${item.created_by || 'Unknown'}"`,
             new Date(item.created_at).toLocaleDateString()
         ]);
@@ -1166,7 +1169,7 @@ async function fetchFailedNiches() {
     if (tbody) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="loading-state" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                <td colspan="9" class="loading-state" style="text-align: center; padding: 3rem; color: var(--text-muted);">
                     <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
                     <p style="margin-top: 1rem;">Loading failed niches...</p>
                 </td>
@@ -1218,7 +1221,7 @@ function renderFailedTable() {
     if (failedDbData.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                <td colspan="9" style="text-align: center; padding: 3rem; color: var(--text-muted);">
                     No failed niches found in the database.
                 </td>
             </tr>
@@ -1230,6 +1233,17 @@ function renderFailedTable() {
         const tr = document.createElement('tr');
         const dateStr = new Date(item.created_at).toLocaleDateString();
 
+        // Failed stage badge color
+        let stageBadgeBg = 'var(--text-muted)';
+        let stageLabel = '—';
+        if (item.failed_stage) {
+            stageLabel = `S${item.failed_stage}`;
+            if (item.failed_stage === 1) stageBadgeBg = 'var(--stage-1, #10b981)';
+            else if (item.failed_stage === 2) stageBadgeBg = 'var(--stage-2, #3b82f6)';
+            else if (item.failed_stage === 3) stageBadgeBg = 'var(--stage-3, #f59e0b)';
+            else if (item.failed_stage === 4) stageBadgeBg = 'var(--stage-4, #ef4444)';
+        }
+
         tr.innerHTML = `
             <td class="checkbox-cell">
                 <input type="checkbox" class="row-checkbox" value="${item.id}">
@@ -1237,8 +1251,9 @@ function renderFailedTable() {
             <td style="font-weight: 600;">${escapeHtml(item.niche)}</td>
             <td>${escapeHtml(item.city || '')}</td>
             <td><code style="background: rgba(255,255,255,0.05); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(item.keyword)}</code></td>
-            <td><span class="status-badge" style="background: var(--glass-bg); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.75rem;">${item.state.toUpperCase()}</span></td>
-            <td style="font-size: 0.85rem; color: var(--text-secondary);">${escapeHtml(item.created_by || 'Unknown')}</td>
+            <td><span class="status-badge" style="background: var(--glass-bg); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.75rem;">${item.state ? item.state.toUpperCase() : '—'}</span></td>
+            <td style="color: var(--secondary); font-weight: 600;">${item.volume || 0}</td>
+            <td><span style="background: ${stageBadgeBg}; color: #000; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">${stageLabel}</span></td>
             <td style="color: var(--text-muted); font-size: 0.85rem;">${dateStr}</td>
             <td>
                 <button class="action-btn delete-btn" data-id="${item.id}" title="Delete Record">
@@ -1301,7 +1316,8 @@ function renderTableHeader() {
                 <th>City</th>
                 <th>Keyword</th>
                 <th>State</th>
-                <th>Added By</th>
+                <th>Volume</th>
+                <th>Failed Stage</th>
                 <th>Created At</th>
                 <th>Actions</th>
             </tr>
