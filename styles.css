@@ -2757,3 +2757,153 @@ select.filter-input option:disabled,
 .data-table tbody tr:last-child td {
     border-bottom: none;
 }
+
+/* =========================================================
+   Mobile Responsiveness & Media Queries
+   ========================================================= */
+
+@media (max-width: 768px) {
+    /* Main layout typography & spacing */
+    body {
+        font-size: 14px;
+    }
+    
+    /* Navbar / Header */
+    .navbar {
+        padding: 1rem;
+    }
+    .navbar-container {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+    .nav-user {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+    .nav-actions {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 0.5rem;
+    }
+
+    /* Dashboard Layout (Main View) */
+    .dashboard-layout {
+        flex-direction: column;
+        padding: 1rem;
+    }
+    .dashboard-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1.5rem;
+        margin-bottom: 1.5rem;
+        position: static;
+        height: auto;
+    }
+    .dashboard-main {
+        padding: 0;
+    }
+    
+    /* Funnel Layout */
+    .funnel-layout {
+        padding: 1rem;
+    }
+    .funnel-content-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    .funnel-sidebar {
+        position: static;
+        top: 0;
+    }
+
+    /* Pipeline Bar */
+    .pipeline-bar {
+        overflow-x: auto;
+        padding-bottom: 1rem;
+        justify-content: flex-start;
+    }
+    .pipeline-stage {
+        min-width: 120px;
+    }
+
+    /* Stage Tabs */
+    .funnel-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+        justify-content: flex-start;
+    }
+    .funnel-tab {
+        white-space: nowrap;
+    }
+
+    /* Form Groups & Filter Bars */
+    .form-group-row, .paste-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-bar {
+        display: flex;
+        flex-direction: column;
+    }
+    .dashboard-container .filter-bar,
+    .dashboard-container > div > div[style*="display: flex"] {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    
+    /* Tables Container */
+    .data-table-container {
+        border-radius: var(--radius-md);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+    }
+    
+    /* Headers with Buttons */
+    div[style*="justify-content: space-between"] {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 1rem;
+    }
+
+    /* Modals */
+    .modal, .notes-modal {
+        width: 95% !important;
+        max-width: none !important;
+        margin: 1rem auto;
+        height: auto;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .modal-content {
+        padding: 1.5rem;
+    }
+
+    /* Live Evaluation Panel */
+    .modal-evaluation-panel {
+        margin-top: 1.5rem;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+        padding-left: 0;
+        padding-top: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Extra tweaks for very small screens */
+    h1 {
+        font-size: 1.5rem !important;
+    }
+    .funnel-header h2 {
+        font-size: 1.25rem;
+    }
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
