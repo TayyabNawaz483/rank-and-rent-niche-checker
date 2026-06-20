@@ -204,7 +204,7 @@ function renderTable() {
     if (filtered.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="${userRole === 'admin' ? 7 : 6}" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                <td colspan="${userRole === 'admin' ? 9 : 8}" style="text-align: center; padding: 3rem; color: var(--text-muted);">
                     No failed niches found.
                 </td>
             </tr>
@@ -215,6 +215,17 @@ function renderTable() {
     filtered.forEach(item => {
         const tr = document.createElement('tr');
         const dateStr = new Date(item.created_at).toLocaleString();
+
+        // Failed stage badge
+        let stageBadgeBg = 'var(--text-muted)';
+        let stageLabel = '—';
+        if (item.failed_stage) {
+            stageLabel = `S${item.failed_stage}`;
+            if (item.failed_stage === 1) stageBadgeBg = 'var(--stage-1, #10b981)';
+            else if (item.failed_stage === 2) stageBadgeBg = 'var(--stage-2, #3b82f6)';
+            else if (item.failed_stage === 3) stageBadgeBg = 'var(--stage-3, #f59e0b)';
+            else if (item.failed_stage === 4) stageBadgeBg = 'var(--stage-4, #ef4444)';
+        }
 
         let actionCell = '';
         if (userRole === 'admin') {
@@ -231,8 +242,10 @@ function renderTable() {
             <td style="font-weight: 600;">${escapeHtml(item.niche)}</td>
             <td>${escapeHtml(item.city || '')}</td>
             <td><code style="background: rgba(255,255,255,0.05); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(item.keyword)}</code></td>
-            <td><span class="status-badge" style="background: var(--glass-bg); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.75rem;">${item.state.toUpperCase()}</span></td>
-            <td style="font-size: 0.85rem; color: var(--text-secondary);">${escapeHtml(item.created_by || 'Unknown')}</td>
+            <td><span class="status-badge" style="background: var(--glass-bg); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.75rem;">${item.state ? item.state.toUpperCase() : '—'}</span></td>
+            <td style="color: var(--secondary); font-weight: 600;">${item.volume || 0}</td>
+            <td><span style="background: ${stageBadgeBg}; color: #000; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">${stageLabel}</span></td>
+            <td style="font-size: 0.85rem; color: var(--text-secondary);">${escapeHtml(item.created_by || 'Auto')}</td>
             <td style="color: var(--text-muted); font-size: 0.85rem;">${dateStr}</td>
             ${actionCell}
         `;
