@@ -44,147 +44,159 @@
     </nav>
 
     <!-- Main Dashboard Container -->
-    <main class="dashboard-container">
+    <main class="dashboard-layout">
         
-        <!-- Header -->
-        <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-            <div>
-                <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.75rem;">
-                    <i class="fa-solid fa-circle-xmark" style="color: var(--danger);"></i> Failed Niches Directory
-                </h1>
-                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">Log and view niche keywords that failed during verification checks.</p>
-            </div>
-        </div>
+        <!-- Sidebar Filter Area -->
+        <aside class="dashboard-sidebar">
+            <section class="filter-bar">
+                <!-- Custom Niche Dropdown -->
+                <div class="filter-group">
+                    <label for="nicheFilter">Niche</label>
+                    <select id="nicheFilter" class="filter-input dropdown-select">
+                        <option value="all">All Niches</option>
+                    </select>
+                </div>
 
-        <div style="display: flex; flex-direction: column; gap: 2rem;">
-            <!-- Main Content Area: Directory List -->
-            <div class="funnel-main">
-                <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.5rem; overflow: hidden; box-shadow: var(--shadow-md);">
-                    <!-- Filter Bar -->
-                    <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                        <div style="position: relative; flex: 1; min-width: 250px;">
-                            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.9rem;"></i>
-                            <input type="text" id="searchInput" class="form-input" placeholder="Search by niche, city, or keyword..." style="padding-left: 2.5rem; width: 100%;">
-                        </div>
-                        <div style="min-width: 150px;">
-                            <select id="stateFilter" class="form-input">
-                                <option value="all">All States</option>
-                                <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
-                                <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
-                                <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
-                                <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option>
-                                <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
-                                <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
-                                <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
-                                <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
-                                <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
-                                <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
-                                <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
-                                <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
-                                <option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option>
-                                <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option>
-                                <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
-                                <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
-                                <option value="WI">WI</option><option value="WY">WY</option>
-                            </select>
-                        </div>
-                        <div style="min-width: 150px;">
-                            <select id="nicheFilter" class="form-input">
-                                <option value="all">All Niches</option>
-                            </select>
-                        </div>
-                        <div style="min-width: 150px;">
-                            <select id="cityFilter" class="form-input">
-                                <option value="all">All Cities</option>
-                            </select>
-                        </div>
+                <!-- Custom Location Group (State Dropdown + City Search stacked) -->
+                <div class="filter-group">
+                    <label>Location</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <select id="stateFilter" class="filter-input dropdown-select">
+                            <option value="all">All States</option>
+                            <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
+                            <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
+                            <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
+                            <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option>
+                            <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
+                            <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
+                            <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
+                            <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
+                            <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
+                            <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
+                            <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
+                            <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
+                            <option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option>
+                            <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option>
+                            <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
+                            <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
+                            <option value="WI">WI</option><option value="WY">WY</option>
+                        </select>
+                        <input type="text" id="searchInput" class="filter-input search-city" placeholder="Find keyword, city..." autocomplete="off">
                     </div>
+                </div>
 
-                    <div class="data-table-container" style="border-radius: var(--radius-md); overflow: auto; border: 1px solid var(--border-color);">
-                        <table class="data-table" style="width: 100%;">
-                            <thead>
-                                <tr>
-                                    <th>Niche</th>
-                                    <th>City</th>
-                                    <th>Keyword</th>
-                                    <th>State</th>
-                                    <th>Volume</th>
-                                    <th>Failed Stage</th>
-                                    <th>Logged By</th>
-                                    <th>Logged At</th>
-                                    <th id="thActions" style="display: none; text-align: center;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="failedTableBody">
-                                <tr>
-                                    <td colspan="9" class="loading-state" style="text-align: center; padding: 3rem; color: var(--text-muted);">
-                                        <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
-                                        <p style="margin-top: 1rem;">Loading failed niches...</p>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="filter-group" style="display: none !important;">
+                    <label for="cityFilter">Select City</label>
+                    <select id="cityFilter" class="filter-input">
+                        <option value="all">All Cities</option>
+                    </select>
+                </div>
+            </section>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="dashboard-main">
+            <!-- Header -->
+            <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa-solid fa-circle-xmark" style="color: var(--danger);"></i> Failed Niches Directory
+                    </h1>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">Log and view niche keywords that failed during verification checks.</p>
+                </div>
+                <div>
+                    <button class="btn btn-primary" id="openLogModalBtn" style="background: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);">
+                        <i class="fa-solid fa-plus"></i> Log Failed Niche
+                    </button>
                 </div>
             </div>
 
-            <!-- Sidebar Content Area: Log Form -->
-            <div class="funnel-sidebar">
-                <div class="sidebar-card" style="padding: 1.5rem; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-color); box-shadow: var(--shadow-md);">
-                    <div class="sidebar-card-title" style="font-size: 1.1rem; margin-bottom: 1.25rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
-                        <i class="fa-solid fa-pen-to-square" style="color: var(--danger);"></i> Log a Failed Niche
-                    </div>
-                    
-                    <form id="failedNicheForm" style="display: flex; flex-direction: column; gap: 1.25rem;">
-                        <div class="form-group">
-                            <label for="keywordInput">Niche Keyword</label>
-                            <input type="text" id="keywordInput" class="form-input" placeholder="e.g. pest control springfield" required autocomplete="off">
-                            <div class="paste-hint" style="margin-top: 0.25rem;">Type keyword (niche + city)</div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="stateSelect">State</label>
-                            <select id="stateSelect" class="form-input" required>
-                                <option value="" disabled selected>Select State</option>
-                                <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
-                                <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
-                                <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
-                                <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option>
-                                <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
-                                <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
-                                <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
-                                <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
-                                <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
-                                <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
-                                <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
-                                <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
-                                <option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option>
-                                <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option>
-                                <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
-                                <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
-                                <option value="WI">WI</option><option value="WY">WY</option>
-                            </select>
-                        </div>
-
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05);">
-                            <div class="form-group">
-                                <label for="detectedNiche">Auto-detected Niche</label>
-                                <input type="text" id="detectedNiche" class="form-input" placeholder="Will be parsed..." required style="background: rgba(255,255,255,0.03);">
-                            </div>
-                            <div class="form-group">
-                                <label for="detectedCity">Auto-detected City</label>
-                                <input type="text" id="detectedCity" class="form-input" placeholder="Will be parsed..." required style="background: rgba(255,255,255,0.03);">
-                            </div>
-                        </div>
-
-                        <button class="btn btn-primary" type="submit" id="submitBtn" style="background: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25); width: 100%; justify-content: center; padding: 0.75rem 1rem;">
-                            <i class="fa-solid fa-plus-circle"></i> Log Failed Niche
-                        </button>
-                    </form>
-                </div>
+            <div class="data-table-container" style="border-radius: var(--radius-md); overflow: auto; border: 1px solid var(--border-color); background: var(--bg-surface);">
+                <table class="data-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Niche</th>
+                            <th>City</th>
+                            <th>Keyword</th>
+                            <th>State</th>
+                            <th>Volume</th>
+                            <th>Failed Stage</th>
+                            <th>Logged By</th>
+                            <th>Logged At</th>
+                            <th id="thActions" style="display: none; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="failedTableBody">
+                        <tr>
+                            <td colspan="9" class="loading-state" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                                <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                                <p style="margin-top: 1rem;">Loading failed niches...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </main>
+
+    <!-- Modal Form: Log Failed Niche -->
+    <div class="modal-overlay" id="addFailedModal">
+        <div class="modal-container" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fa-solid fa-pen-to-square" style="color: var(--danger); margin-right: 0.5rem;"></i> Log a Failed Niche</h3>
+                <button class="modal-close" id="closeLogModalBtn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="modal-form-content" style="padding: 1.5rem;">
+                <form id="failedNicheForm" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                    <div class="form-group">
+                        <label for="keywordInput">Niche Keyword</label>
+                        <input type="text" id="keywordInput" class="form-input" placeholder="e.g. pest control springfield" required autocomplete="off">
+                        <div class="paste-hint" style="margin-top: 0.25rem;">Type keyword (niche + city)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="stateSelect">State</label>
+                        <select id="stateSelect" class="form-input" required>
+                            <option value="" disabled selected>Select State</option>
+                            <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
+                            <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
+                            <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
+                            <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option>
+                            <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
+                            <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
+                            <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
+                            <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
+                            <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
+                            <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
+                            <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
+                            <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
+                            <option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option>
+                            <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option>
+                            <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
+                            <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
+                            <option value="WI">WI</option><option value="WY">WY</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05);">
+                        <div class="form-group">
+                            <label for="detectedNiche">Auto-detected Niche</label>
+                            <input type="text" id="detectedNiche" class="form-input" placeholder="Will be parsed..." required style="background: rgba(255,255,255,0.03);">
+                        </div>
+                        <div class="form-group">
+                            <label for="detectedCity">Auto-detected City</label>
+                            <input type="text" id="detectedCity" class="form-input" placeholder="Will be parsed..." required style="background: rgba(255,255,255,0.03);">
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" type="submit" id="submitBtn" style="background: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25); width: 100%; justify-content: center; padding: 0.75rem 1rem;">
+                        <i class="fa-solid fa-plus-circle"></i> Log Failed Niche
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast Notification -->
     <div class="funnel-toast" id="funnelToast">

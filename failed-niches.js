@@ -111,6 +111,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     const form = document.getElementById('failedNicheForm');
     form.addEventListener('submit', handleFormSubmit);
 
+    // Modal Listeners
+    const openLogModalBtn = document.getElementById('openLogModalBtn');
+    const closeLogModalBtn = document.getElementById('closeLogModalBtn');
+    const addFailedModal = document.getElementById('addFailedModal');
+
+    if (openLogModalBtn && addFailedModal) {
+        openLogModalBtn.addEventListener('click', () => {
+            addFailedModal.classList.add('active');
+            document.getElementById('keywordInput').focus();
+        });
+    }
+
+    if (closeLogModalBtn && addFailedModal) {
+        closeLogModalBtn.addEventListener('click', () => {
+            addFailedModal.classList.remove('active');
+        });
+    }
+
+    // Close on outside click
+    if (addFailedModal) {
+        addFailedModal.addEventListener('click', (e) => {
+            if (e.target === addFailedModal) {
+                addFailedModal.classList.remove('active');
+            }
+        });
+    }
+
     // Filter listeners
     document.getElementById('searchInput').addEventListener('input', renderTable);
     document.getElementById('stateFilter').addEventListener('change', renderTable);
@@ -377,6 +404,12 @@ async function handleFormSubmit(e) {
     document.getElementById('detectedCity').value = '';
     document.getElementById('stateSelect').selectedIndex = 0;
     
+    // Close modal
+    const addFailedModal = document.getElementById('addFailedModal');
+    if (addFailedModal) {
+        addFailedModal.classList.remove('active');
+    }
+
     renderTable();
 }
 
