@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyword Funnel — Rank & Rent Evaluator</title>
+    <meta name="description" content="4-stage keyword research pipeline for rank and rent niche evaluation">
+
+    <link rel="stylesheet" href="/styles.css?v=3">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="/" class="logo">
+            <div class="logo-icon">R</div>
+            <span>RankRent<span style="color: var(--primary);">Funnel</span></span>
+        </a>
+        <div class="nav-actions">
+            <div class="user-badge-container" id="userBadgeContainer" style="display: none; align-items: center; gap: 0.5rem; background: var(--glass-bg); border: 1px solid var(--border-color); padding: 0.35rem 0.75rem; border-radius: var(--radius-md); margin-right: 0.5rem;">
+                <i class="fa-solid fa-user-circle" style="color: var(--primary); font-size: 1rem;"></i>
+                <span id="userBadgeEmail" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;"></span>
+                <span id="userBadgeRole" class="status-badge" style="font-size: 0.7rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: bold; margin-left: 0.25rem;"></span>
+            </div>
+            
+            <a href="/failed-niches.html" class="btn btn-secondary" title="Failed Niches" style="margin-right: 0.5rem;">
+                <i class="fa-solid fa-circle-xmark"></i> Failed Niches
+            </a>
+
+            <a href="/admin-dashboard" class="btn btn-secondary" title="Admin Dashboard" id="adminDashboardBtn" style="display: none;">
+                <i class="fa-solid fa-chart-line"></i> Dashboard
+            </a>
+
+            <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Mode" style="padding: 0.5rem; width: 38px; height: 38px;">
+                <i class="fa-solid fa-sun" id="themeIcon"></i>
+            </button>
+            <button class="btn btn-secondary" id="logoutBtn">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+            </button>
+        </div>
+    </nav>
+
+    <main class="funnel-layout">
+
+
+        <!-- Pipeline Progress Bar -->
+        <div class="pipeline-bar" id="pipelineBar">
+            <div class="pipeline-stage s1 has-pending">
+                <div class="pipeline-stage-dot" id="pipelineDot1">0</div>
+                <span class="pipeline-stage-label">Raw Keywords</span>
+                <span class="pipeline-stage-count" id="pipelineCount1">0 pending</span>
+            </div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-stage s2">
+                <div class="pipeline-stage-dot" id="pipelineDot2">0</div>
+                <span class="pipeline-stage-label">KD Check</span>
+                <span class="pipeline-stage-count" id="pipelineCount2">0 pending</span>
+            </div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-stage s3">
+                <div class="pipeline-stage-dot" id="pipelineDot3">0</div>
+                <span class="pipeline-stage-label">GMB Check</span>
+                <span class="pipeline-stage-count" id="pipelineCount3">0 pending</span>
+            </div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-stage s4">
+                <div class="pipeline-stage-dot" id="pipelineDot4">0</div>
+                <span class="pipeline-stage-label">SERP Done</span>
+                <span class="pipeline-stage-count" id="pipelineCount4">0 pending</span>
+            </div>
+        </div>
+
+        <!-- Stage Tabs -->
+        <div class="funnel-tabs" id="funnelTabs">
+            <button class="funnel-tab s1 active" data-stage="1">
+                <span class="tab-dot"></span>
+                Stage 1 — Keywords
+                <span class="tab-count" id="tabCount1">0</span>
+            </button>
+            <button class="funnel-tab s2" data-stage="2">
+                <span class="tab-dot"></span>
+                Stage 2 — KD
+                <span class="tab-count" id="tabCount2">0</span>
+            </button>
+            <button class="funnel-tab s3" data-stage="3">
+                <span class="tab-dot"></span>
+                Stage 3 — GMB
+                <span class="tab-count" id="tabCount3">0</span>
+            </button>
+            <button class="funnel-tab s4" data-stage="4">
+                <span class="tab-dot"></span>
+                Stage 4 — SERP
+                <span class="tab-count" id="tabCount4">0</span>
+            </button>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- STAGE 1 PANEL — Keyword Generator             -->
+        <!-- ============================================ -->
+        <div class="funnel-panel active" id="panel1" data-stage="1">
+            <div class="funnel-content-grid">
+                <div class="funnel-main">
+                    <div class="paste-box-container">
+                        <div class="paste-box-label">
+                            <i class="fa-solid fa-paste"></i> Paste Keywords from Keywords Everywhere
+                        </div>
+                        <textarea class="paste-textarea" id="stage1Textarea" placeholder="Paste keywords here (one per line)&#10;&#10;Format: keyword [TAB] volume&#10;&#10;Example:&#10;pest control Littleton	320&#10;pest control Englewood	210&#10;pest control Golden	180"></textarea>
+                        <div class="paste-hint">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Paste one keyword per line. Tab-separated volume will be auto-detected.
+                        </div>
+
+                        <!-- Controls: niche auto-detect + state dropdown -->
+                        <div class="paste-controls">
+                            <div class="form-group">
+                                <label for="stage1Niche">Auto-Detected Niche</label>
+                                <input type="text" id="stage1Niche" class="form-input" placeholder="e.g. pest control" autocomplete="off">
+                            </div>
+                            <div class="form-group">
+                                <label for="stage1State">State</label>
+                                <select id="stage1State" class="form-input">
+                                    <option value="" disabled selected>Select State</option>
+                                    <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
+                                    <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
+                                    <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
+                                    <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option>
+                                    <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
+                                    <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
+                                    <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
+                                    <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
+                                    <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
+                                    <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
+                                    <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
+                                    <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
+                                    <option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option>
+                                    <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option>
+                                    <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
+                                    <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
+                                    <option value="WI">WI</option><option value="WY">WY</option>
+                                </select>
+                            </div>
+                            <button class="paste-submit-btn" id="stage1SubmitBtn" disabled>
+                                <i class="fa-solid fa-rocket"></i> Submit to Pipeline
+                            </button>
+                        </div>
+
+                        <!-- Preview Table -->
+                        <div class="preview-container" id="stage1Preview" style="display:none;">
+                            <div class="preview-stats">
+                                <span>Keywords detected: <strong id="stage1KwCount">0</strong></span>
+                                <span>Niche: <strong id="stage1NicheLabel">—</strong></span>
+                            </div>
+                            <div class="preview-table-wrap" style="margin-top: 0.5rem;">
+                                <table class="preview-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Keyword</th>
+                                            <th>Niche</th>
+                                            <th>City</th>
+                                            <th>State</th>
+                                            <th>Volume</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stage1PreviewBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="funnel-sidebar">
+                    <div class="stage-info-card s1">
+                        <div class="card-header">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>What You Need to Check</span>
+                        </div>
+                        <ul class="info-list">
+                            <li><span class="step-num">1</span> Generate keywords with GPT/Gemini</li>
+                            <li><span class="step-num">2</span> Check in Keywords Everywhere</li>
+                            <li><span class="step-num">3</span> Remove keywords with volume &lt; 50</li>
+                            <li><span class="step-num">4</span> Copy & paste the remaining here</li>
+                        </ul>
+                    </div>
+                    <div class="sidebar-card">
+                        <div class="sidebar-card-title">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Submission History
+                        </div>
+                        <div id="stage1History">
+                            <div class="empty-state" style="padding: 1.5rem;">
+                                <i class="fa-solid fa-inbox" style="font-size: 1.5rem;"></i>
+                                <p style="margin-top: 0.5rem;">No submissions yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- STAGE 2 PANEL — KD Checker                    -->
+        <!-- ============================================ -->
+        <div class="funnel-panel" id="panel2" data-stage="2">
+            <div class="funnel-content-grid">
+                <div class="funnel-main">
+                    <!-- Pending Groups -->
+                    <div class="section-divider">
+                        <span class="section-divider-icon" style="color: var(--warning);">⏳</span>
+                        <span class="section-divider-text">Pending — Needs KD Check</span>
+                        <div class="section-divider-line"></div>
+                    </div>
+                    <div id="stage2PendingGroups">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-hourglass-start"></i>
+                            <h3>No keywords waiting</h3>
+                            <p>Keywords from Stage 1 will appear here</p>
+                        </div>
+                    </div>
+
+                    <!-- Checked Groups -->
+                    <div class="section-divider" style="margin-top: 2rem;">
+                        <span class="section-divider-icon" style="color: var(--success);">✅</span>
+                        <span class="section-divider-text">Checked — Already Sent to Stage 3</span>
+                        <div class="section-divider-line"></div>
+                    </div>
+                    <div id="stage2CheckedGroups">
+                        <p style="font-size: 0.8rem; color: var(--text-muted); padding: 0.5rem 0;">No checked groups yet</p>
+                    </div>
+
+                    <!-- Paste Box -->
+                    <div class="paste-box-container">
+                        <div class="paste-box-label">
+                            <i class="fa-solid fa-paste"></i> Paste Passing Keywords (KD ≤ 10)
+                        </div>
+                        <textarea class="paste-textarea" id="stage2Textarea" placeholder="Paste keywords that passed KD check (one per line)&#10;&#10;Only paste keywords with KD ≤ 10&#10;Same format as copied above"></textarea>
+                        <div class="paste-hint">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Paste only keywords that passed. Non-matching keywords will be shown as warnings.
+                        </div>
+                        <div class="paste-controls">
+                            <div class="form-group">
+                                <label for="stage2GroupSelect">This belongs to</label>
+                                <select id="stage2GroupSelect" class="form-input">
+                                    <option value="" disabled selected>Select niche group</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-secondary" id="stage2PreviewBtn" style="white-space: nowrap;">
+                                <i class="fa-solid fa-eye"></i> Preview
+                            </button>
+                        </div>
+                        <div id="stage2MatchWarning"></div>
+
+                        <!-- Preview with Notes -->
+                        <div class="preview-container" id="stage2Preview" style="display:none;">
+                            <div class="preview-stats">
+                                <span>Matched: <strong id="stage2MatchCount">0</strong></span>
+                                <span style="color: var(--text-muted); font-size: 0.8rem;">📝 Add notes before submitting</span>
+                            </div>
+                            <div class="preview-table-wrap" style="margin-top: 0.5rem;">
+                                <table class="preview-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Keyword</th>
+                                            <th>City</th>
+                                            <th>Volume</th>
+                                            <th>Note</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stage2PreviewBody"></tbody>
+                                </table>
+                            </div>
+                            <button class="paste-submit-btn" id="stage2SubmitBtn" style="margin-top: 1rem;">
+                                <i class="fa-solid fa-paper-plane"></i> Submit &amp; Send to Stage 3
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="funnel-sidebar">
+                    <div class="stage-info-card s2">
+                        <div class="card-header">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>What You Need to Check</span>
+                        </div>
+                        <ul class="info-list">
+                            <li><span class="step-num">1</span> Copy keywords (100 at a time)</li>
+                            <li><span class="step-num">2</span> Go to Moz, check KD</li>
+                            <li><span class="step-num">3</span> Only paste back keywords with KD ≤ 10</li>
+                            <li><span class="step-num">4</span> Select the niche group & submit</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- STAGE 3 PANEL — GMB Checker                   -->
+        <!-- ============================================ -->
+        <div class="funnel-panel" id="panel3" data-stage="3">
+            <div class="funnel-content-grid">
+                <div class="funnel-main">
+                    <div class="section-divider">
+                        <span class="section-divider-icon" style="color: var(--stage-3);">⏳</span>
+                        <span class="section-divider-text">Pending — Needs GMB Check</span>
+                        <div class="section-divider-line"></div>
+                    </div>
+                    <div id="stage3PendingGroups">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-hourglass-start"></i>
+                            <h3>No keywords waiting</h3>
+                            <p>Keywords from Stage 2 will appear here</p>
+                        </div>
+                    </div>
+
+                    <div class="section-divider" style="margin-top: 2rem;">
+                        <span class="section-divider-icon" style="color: var(--success);">✅</span>
+                        <span class="section-divider-text">Checked — Already Sent to Stage 4</span>
+                        <div class="section-divider-line"></div>
+                    </div>
+                    <div id="stage3CheckedGroups">
+                        <p style="font-size: 0.8rem; color: var(--text-muted); padding: 0.5rem 0;">No checked groups yet</p>
+                    </div>
+
+                    <div class="paste-box-container">
+                        <div class="paste-box-label">
+                            <i class="fa-solid fa-paste"></i> Paste Passing Keywords (GMB Criteria Met)
+                        </div>
+                        <textarea class="paste-textarea" id="stage3Textarea" placeholder="Paste keywords that passed GMB criteria (one per line)&#10;&#10;Cities with 10-15+ GMBs AND all 3 reviews ≤ 100"></textarea>
+                        <div class="paste-hint">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Only paste keywords from cities where GMB criteria are met.
+                        </div>
+                        <div class="paste-controls">
+                            <div class="form-group">
+                                <label for="stage3GroupSelect">This belongs to</label>
+                                <select id="stage3GroupSelect" class="form-input">
+                                    <option value="" disabled selected>Select niche group</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-secondary" id="stage3PreviewBtn" style="white-space: nowrap;">
+                                <i class="fa-solid fa-eye"></i> Preview
+                            </button>
+                        </div>
+                        <div id="stage3MatchWarning"></div>
+
+                        <div class="preview-container" id="stage3Preview" style="display:none;">
+                            <div class="preview-stats">
+                                <span>Matched: <strong id="stage3MatchCount">0</strong></span>
+                                <span style="color: var(--text-muted); font-size: 0.8rem;">📝 Add notes before submitting</span>
+                            </div>
+                            <div class="preview-table-wrap" style="margin-top: 0.5rem;">
+                                <table class="preview-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Keyword</th>
+                                            <th>City</th>
+                                            <th>Volume</th>
+                                            <th>Note</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stage3PreviewBody"></tbody>
+                                </table>
+                            </div>
+                            <button class="paste-submit-btn" id="stage3SubmitBtn" style="margin-top: 1rem;">
+                                <i class="fa-solid fa-paper-plane"></i> Submit &amp; Send to Stage 4
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="funnel-sidebar">
+                    <div class="stage-info-card s3">
+                        <div class="card-header">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>What You Need to Check</span>
+                        </div>
+                        <ul class="info-list">
+                            <li><span class="step-num">1</span> Copy keywords from pending groups</li>
+                            <li><span class="step-num">2</span> Use Valentin/VPN to check GMBs</li>
+                            <li>
+                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                    <div><span class="step-num">3</span> Only paste keywords where:</div>
+                                    <ul class="info-sublist">
+                                        <li>• 10-15+ GMBs in the city</li>
+                                        <li>• Top 3 reviews ≤ 100</li>
+                                    </ul>
+                                </div>
+                            </li>
+                            <li><span class="step-num">4</span> Select niche group & submit</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- STAGE 4 PANEL — SERP Analyzer                 -->
+        <!-- ============================================ -->
+        <div class="funnel-panel" id="panel4" data-stage="4">
+            <div class="funnel-content-grid">
+                <div class="funnel-main">
+                    <div class="section-divider">
+                        <span class="section-divider-icon" style="color: var(--stage-4);">⏳</span>
+                        <span class="section-divider-text">Pending — Needs SERP Analysis</span>
+                        <div class="section-divider-line"></div>
+                    </div>
+                    <div id="stage4PendingGroups">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-hourglass-start"></i>
+                            <h3>No keywords waiting</h3>
+                            <p>Keywords from Stage 3 will appear here</p>
+                        </div>
+                    </div>
+
+                    <div class="section-divider" style="margin-top: 2rem;">
+                        <span class="section-divider-icon" style="color: var(--success);">✅</span>
+                        <span class="section-divider-text">Completed — Saved to Main Dashboard</span>
+                        <div class="section-divider-line"></div>
+                    </div>
+                    <div id="stage4CheckedGroups">
+                        <p style="font-size: 0.8rem; color: var(--text-muted); padding: 0.5rem 0;">No completed groups yet</p>
+                    </div>
+
+                    <div class="paste-box-container">
+                        <div class="paste-box-label">
+                            <i class="fa-solid fa-trophy" style="color: var(--stage-4);"></i> Paste Final Passing Keywords
+                        </div>
+                        <textarea class="paste-textarea" id="stage4Textarea" placeholder="Paste keywords that passed ALL SERP criteria (one per line)&#10;&#10;• Low DA sites (DA<10) ≥ 4&#10;• R&R/EMD site exists&#10;• Directory in SERP&#10;• Good traffic distribution"></textarea>
+                        <div class="paste-hint">
+                            <i class="fa-solid fa-circle-info"></i>
+                            These keywords will be saved to the main dashboard as PASS.
+                        </div>
+                        <div class="paste-controls">
+                            <div class="form-group">
+                                <label for="stage4GroupSelect">This belongs to</label>
+                                <select id="stage4GroupSelect" class="form-input">
+                                    <option value="" disabled selected>Select niche group</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-secondary" id="stage4PreviewBtn" style="white-space: nowrap;">
+                                <i class="fa-solid fa-eye"></i> Preview
+                            </button>
+                        </div>
+                        <div id="stage4MatchWarning"></div>
+
+                        <div class="preview-container" id="stage4Preview" style="display:none;">
+                            <div class="preview-stats">
+                                <span>Matched: <strong id="stage4MatchCount">0</strong></span>
+                                <span style="color: var(--text-muted); font-size: 0.8rem;">📝 Add notes before submitting</span>
+                            </div>
+                            <div class="preview-table-wrap" style="margin-top: 0.5rem;">
+                                <table class="preview-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Keyword</th>
+                                            <th>City</th>
+                                            <th>Volume</th>
+                                            <th>Note</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stage4PreviewBody"></tbody>
+                                </table>
+                            </div>
+                            <button class="paste-submit-btn finalize" id="stage4SubmitBtn" style="margin-top: 1rem;">
+                                <i class="fa-solid fa-trophy"></i> Finalize &amp; Save to Main Dashboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="funnel-sidebar">
+                    <div class="stage-info-card s4">
+                        <div class="card-header">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>What You Need to Check</span>
+                        </div>
+                        <ul class="info-list">
+                            <li><span class="step-num">1</span> Copy keywords from pending groups</li>
+                            <li><span class="step-num">2</span> Go to Moz for full SERP analysis</li>
+                            <li><span class="step-num">3</span> Check: DA&lt;10 ≥ 4, R&R site, directories, traffic</li>
+                            <li><span class="step-num">4</span> Only paste passing keywords</li>
+                            <li><span class="step-num">5</span> Finalize → saved to main dashboard as PASS</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div class="funnel-toast" id="funnelToast">
+        <i class="fa-solid fa-check-circle"></i>
+        <span id="funnelToastText">Action completed</span>
+    </div>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/auth.js?v=3"></script>
+    <script src="/funnel.js?v=1"></script>
+</body>
+</html>

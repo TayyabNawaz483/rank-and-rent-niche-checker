@@ -1,0 +1,25 @@
+{
+  "name": "rank-and-rent-tools",
+  "version": "1.0.0",
+  "description": "",
+  "main": "admin.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "netlify dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TayyabNawaz483/rank-and-rent-niche-checker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/TayyabNawaz483/rank-and-rent-niche-checker/issues"
+  },
+  "homepage": "https://github.com/TayyabNawaz483/rank-and-rent-niche-checker#readme",
+  "devDependencies": {
+    "netlify-cli": "^26.1.0"
+  }
+}

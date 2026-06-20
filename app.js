@@ -3,6 +3,7 @@
 // Application State
 let nichesData = [];
 let supabaseClient = null;
+let currentViewBy = 'cities';
 let currentFilters = {
     keyword: '',
     state: 'all',
@@ -49,17 +50,40 @@ const statusPills = document.querySelectorAll('.status-pill[data-status]');
 const nicheGrid = document.getElementById('nicheGrid');
 
 const statTotal = document.getElementById('statTotal');
-const statPassed = document.getElementById('statPassed');
-const statFailed = document.getElementById('statFailed');
-const statRatio = document.getElementById('statRatio');
+const statCities = document.getElementById('statCities');
+const statStates = document.getElementById('statStates');
+const statTotalVolume = document.getElementById('statTotalVolume');
 
 const accordionHeader = document.getElementById('accordionHeader');
 const accordionContent = document.getElementById('accordionContent');
 const accordionArrow = document.getElementById('accordionArrow');
 
 // Initial Setup
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
+
+    // Enforce Admin Authentication
+    if (window.AuthService) {
+        const isAuthenticated = await window.AuthService.requireAuth();
+        if (!isAuthenticated) return;
+
+        const client = window.AuthService.getClient();
+        if (client) {
+            try {
+                const { data: { user } } = await client.auth.getUser();
+                const role = window.AuthService.getUserRole(user);
+                if (role !== 'admin') {
+                    window.location.replace('/stage1');
+                    return;
+                }
+            } catch (e) {
+                console.error("Admin verification failed:", e);
+                window.location.replace('/admin');
+                return;
+            }
+        }
+    }
+
     initSupabase();
     loadNiches();
     setupEventListeners();
@@ -233,6 +257,38 @@ function getMockData() {
 
 // Setup Event Listeners
 function setupEventListeners() {
+    // Logout Button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            if (window.AuthService) {
+                await window.AuthService.logout();
+            }
+        });
+    }
+
+    // View By Toggle Switchers
+    const viewBtnCities = document.getElementById('viewBtnCities');
+    const viewBtnStates = document.getElementById('viewBtnStates');
+    
+    if (viewBtnCities && viewBtnStates) {
+        viewBtnCities.addEventListener('click', () => {
+            if (currentViewBy === 'cities') return;
+            currentViewBy = 'cities';
+            viewBtnCities.classList.add('active');
+            viewBtnStates.classList.remove('active');
+            renderNicheGrid();
+        });
+        
+        viewBtnStates.addEventListener('click', () => {
+            if (currentViewBy === 'states') return;
+            currentViewBy = 'states';
+            viewBtnStates.classList.add('active');
+            viewBtnCities.classList.remove('active');
+            renderNicheGrid();
+        });
+    }
+
     // Accordion
     accordionHeader.addEventListener('click', () => {
         accordionContent.classList.toggle('open');
@@ -706,14 +762,28 @@ function updateFilterOptions() {
 
 function renderStats() {
     const total = nichesData.length;
-    const passed = nichesData.filter(item => item.status === 'PASS').length;
-    const failed = total - passed;
-    const ratio = total > 0 ? Math.round((passed / total) * 100) : 0;
+    
+    // Unique Cities count
+    const uniqueCities = new Set(
+        nichesData
+            .map(item => item.city ? item.city.trim().toLowerCase() : '')
+            .filter(Boolean)
+    );
+    
+    // Unique States count
+    const uniqueStates = new Set(
+        nichesData
+            .map(item => item.state ? item.state.trim().toUpperCase() : '')
+            .filter(Boolean)
+    );
+    
+    // Total Search Volume
+    const totalVolume = nichesData.reduce((sum, item) => sum + (parseInt(item.volume) || 0), 0);
 
     statTotal.textContent = total;
-    statPassed.textContent = passed;
-    statFailed.textContent = failed;
-    statRatio.textContent = `${ratio}%`;
+    statCities.textContent = uniqueCities.size;
+    statStates.textContent = uniqueStates.size;
+    statTotalVolume.textContent = totalVolume.toLocaleString();
 }
 
 function renderNicheGrid() {
@@ -762,64 +832,108 @@ function renderNicheGrid() {
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </div>
                 <h3>No Matching Niches Found</h3>
-                <p>Try clearing your search filters or add a new niche evaluating record.</p>
+                <p>Try clearing your search filters or check your funnel submissions.</p>
             </div>
         `;
         return;
     }
 
-    filtered.forEach(item => {
-        const card = document.createElement('article');
-        card.className = 'niche-card';
-        card.id = `card-${item.id}`;
+    const tableContainer = document.createElement('div');
+    tableContainer.className = 'niche-table-container';
 
-        const evaluation = evaluateNicheCriteria(item);
-        const passClass = item.status === 'PASS' ? 'pass' : 'fail';
-        const dateStr = new Date(item.created_at).toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
+    const table = document.createElement('table');
+    table.className = 'niche-table';
 
-        // Compute average review or map pack review tags
-        const reviewsStr = item.gmb_reviews ? item.gmb_reviews.join(', ') : '0';
-
-        card.innerHTML = `
-            <div class="niche-card-header">
-                <div class="niche-card-title">
-                    <span class="niche-name">${escapeHtml(item.niche)}</span>
-                    <span class="niche-city">
-                        <i class="fa-solid fa-location-dot"></i> ${escapeHtml(item.city)}${item.state ? ', ' + escapeHtml(item.state.toUpperCase()) : ''}${item.population ? ' (Pop: ' + formatPopulation(item.population) + ')' : ''}
-                    </span>
-                </div>
-                <span class="status-badge ${passClass}">${item.status}</span>
-            </div>
-
-            <div class="niche-stats-summary">
-                <div class="niche-stat-box">
-                    <div class="box-val" style="color: var(--primary);">${item.kd}</div>
-                    <div class="box-lbl">Difficulty (KD)</div>
-                </div>
-                <div class="niche-stat-box">
-                    <div class="box-val" style="color: var(--secondary);">${item.volume}</div>
-                    <div class="box-lbl">Search Volume</div>
-                </div>
-                <div class="card-detail"><span>Comp. Traffic:</span> <strong>${item.competitor_traffic}</strong></div>
-                <div class="card-detail"><span>Directories in SERP:</span> <strong>${item.directory_count}</strong></div>
-                <div class="card-detail"><span>R&R Sites in SERP:</span> <strong>${item.rr_site_count}</strong></div>
-            </div>
-
-            <div class="niche-card-actions">
-                <a href="details.html?id=${item.id}" class="details-toggle-btn" style="text-decoration: none;">
-                    <span>View Evaluation Details</span>
-                    <i class="fa-solid fa-arrow-right-long"></i>
-                </a>
-                <span style="font-size: 0.7rem; color: var(--text-muted);">${dateStr}</span>
-            </div>
+    if (currentViewBy === 'cities') {
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th style="width: 80px;">#</th>
+                    <th>Niche Keyword</th>
+                    <th>City</th>
+                    <th style="width: 120px;">State</th>
+                    <th style="width: 100px; text-align: center;">KD</th>
+                    <th style="width: 150px; text-align: right;">Volume</th>
+                </tr>
+            </thead>
+            <tbody id="nicheTableBody"></tbody>
         `;
 
-        nicheGrid.appendChild(card);
-    });
+        const tbody = table.querySelector('#nicheTableBody');
+
+        filtered.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            
+            const cityVal = item.city || '';
+            const nicheVal = item.niche || '';
+            const keywordVal = cityVal ? `${nicheVal} ${cityVal}` : nicheVal;
+            const stateVal = item.state ? item.state.toUpperCase() : '—';
+            const volumeVal = item.volume !== undefined && item.volume !== null ? item.volume : '0';
+
+            tr.innerHTML = `
+                <td class="row-number"><span class="row-arrow">▸</span>${index + 1}</td>
+                <td class="row-keyword">${escapeHtml(keywordVal)}</td>
+                <td class="row-city">${escapeHtml(cityVal)}</td>
+                <td class="row-state">${escapeHtml(stateVal)}</td>
+                <td class="row-kd" style="text-align: center; color: var(--primary); font-weight: 600;">${item.kd !== undefined ? item.kd : 0}</td>
+                <td class="row-volume" style="text-align: right;">${volumeVal}</td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+    } else {
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th style="width: 80px;">#</th>
+                    <th>State</th>
+                    <th style="text-align: right;">Niches</th>
+                    <th style="text-align: right; width: 150px;">Cities</th>
+                </tr>
+            </thead>
+            <tbody id="nicheTableBody"></tbody>
+        `;
+
+        const tbody = table.querySelector('#nicheTableBody');
+
+        // Group filtered records by state and collect unique cities and niches
+        const stateData = {};
+        filtered.forEach(item => {
+            if (item.state) {
+                const stateUpper = item.state.toUpperCase();
+                if (!stateData[stateUpper]) {
+                    stateData[stateUpper] = {
+                        cities: new Set(),
+                        niches: new Set()
+                    };
+                }
+                if (item.city) stateData[stateUpper].cities.add(item.city.toLowerCase());
+                if (item.niche) stateData[stateUpper].niches.add(item.niche.toLowerCase());
+            }
+        });
+
+        const aggregated = Object.entries(stateData).map(([state, data]) => ({
+            state,
+            cityCount: data.cities.size,
+            nicheCount: data.niches.size
+        })).sort((a, b) => b.cityCount - a.cityCount);
+
+        aggregated.forEach((item, index) => {
+            const tr = document.createElement('tr');
+
+            tr.innerHTML = `
+                <td class="row-number"><span class="row-arrow">▸</span>${index + 1}</td>
+                <td><span class="state-badge-pill">${escapeHtml(item.state)}</span></td>
+                <td style="text-align: right; font-weight: 600; color: #ff7e47;">${item.nicheCount}</td>
+                <td class="row-volume" style="text-align: right;">${item.cityCount}</td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    tableContainer.appendChild(table);
+    nicheGrid.appendChild(tableContainer);
 }
 
 
@@ -883,29 +997,19 @@ function exportDataCSV(filteredOnly = false) {
 
     // CSV headers
     const headers = [
-        "Status", "Niche", "City", "State", "Population", "Zip Codes", "Keyword",
-        "KD", "Volume", "DA < 10 Count", "GMB Reviews", "Total GMBs",
-        "Competitor Traffic", "Directory Count", "R&R Site Count", "Date Added"
+        "Niche Keyword", "City", "State", "KD", "Volume"
     ];
 
-    const rows = dataToExport.map(item => [
-        item.status,
-        `"${item.niche}"`,
-        `"${item.city}"`,
-        item.state || "",
-        item.population || "",
-        item.zip_codes || 0,
-        `"${item.keyword}"`,
-        item.kd,
-        item.volume,
-        item.da_count,
-        `"${item.gmb_reviews ? item.gmb_reviews.join(', ') : ''}"`,
-        item.gmb_count,
-        item.competitor_traffic,
-        item.directory_count || 0,
-        item.rr_site_count || 0,
-        new Date(item.created_at).toLocaleDateString()
-    ]);
+    const rows = dataToExport.map(item => {
+        const keywordVal = `${item.niche || ''} ${item.city || ''}`.trim();
+        return [
+            `"${keywordVal}"`,
+            `"${item.city || ''}"`,
+            item.state || "",
+            item.kd !== undefined ? item.kd : 0,
+            item.volume || 0
+        ];
+    });
 
     const csvContent = [
         headers.join(","),

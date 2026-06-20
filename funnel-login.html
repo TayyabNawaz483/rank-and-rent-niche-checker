@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - Rank & Rent Evaluator</title>
+    <title>Funnel Login — Rank & Rent Evaluator</title>
     
-    <link rel="stylesheet" href="/styles.css">
-    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="/styles.css?v=3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -34,11 +33,11 @@
             width: 56px;
             height: 56px;
             border-radius: var(--radius-md);
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--stage-1), var(--stage-4));
             color: white;
             font-weight: 800;
             font-size: 1.75rem;
-            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
             margin-bottom: 1.5rem;
         }
         .login-title {
@@ -82,44 +81,71 @@
         .back-to-site:hover {
             color: var(--primary);
         }
+        .stage-badges {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .stage-badge-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            padding: 0.25rem 0.6rem;
+            border-radius: var(--radius-sm);
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+        }
+        .stage-badge-item .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <div class="login-logo">R</div>
-        <h1 class="login-title">Admin Login</h1>
-        <p class="login-subtitle">Secure access for database management</p>
+        <div class="login-logo">F</div>
+        <h1 class="login-title">Funnel Login</h1>
+        <p class="login-subtitle">Keyword research pipeline access</p>
 
         <div id="loginError" class="login-error"></div>
 
         <form id="loginForm" class="login-form">
             <div class="form-group">
                 <label for="emailInput">Email Address</label>
-                <input type="email" id="emailInput" class="form-input" required placeholder="admin@example.com">
+                <input type="email" id="emailInput" class="form-input" required placeholder="worker@example.com">
             </div>
             <div class="form-group">
                 <label for="passwordInput">Password</label>
                 <input type="password" id="passwordInput" class="form-input" required placeholder="••••••••">
             </div>
             <button type="submit" class="btn btn-primary" id="loginBtn" style="width: 100%; margin-top: 0.5rem; padding: 0.85rem;">
-                <i class="fa-solid fa-lock"></i> Secure Login
+                <i class="fa-solid fa-arrow-right-to-bracket"></i> Login to Funnel
             </button>
         </form>
 
-        <a href="/" class="back-to-site"><i class="fa-solid fa-arrow-left"></i> Return to Public Evaluator</a>
+        <div class="stage-badges">
+            <div class="stage-badge-item"><div class="dot" style="background: var(--stage-1);"></div> Stage 1</div>
+            <div class="stage-badge-item"><div class="dot" style="background: var(--stage-2);"></div> Stage 2</div>
+            <div class="stage-badge-item"><div class="dot" style="background: var(--stage-3);"></div> Stage 3</div>
+            <div class="stage-badge-item"><div class="dot" style="background: var(--stage-4);"></div> Stage 4</div>
+        </div>
+
+        <a href="/" class="back-to-site"><i class="fa-solid fa-arrow-left"></i> Return to Public Dashboard</a>
     </div>
 
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/auth.js"></script>
+    <script src="/auth.js?v=3"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             // Apply theme
             const savedTheme = localStorage.getItem('rank_rent_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', savedTheme);
-
-            // Check if already authenticated
-            await window.AuthService.requireNoAuth();
 
             const loginForm = document.getElementById('loginForm');
             const loginBtn = document.getElementById('loginBtn');
@@ -137,13 +163,14 @@
 
                 try {
                     await window.AuthService.login(email, password);
-                    // On success, auth client persists token in localStorage and we redirect
-                    window.location.href = '/admin-dashboard';
+                    const redirectUrl = sessionStorage.getItem('funnel_login_redirect') || '/admin-dashboard';
+                    sessionStorage.removeItem('funnel_login_redirect');
+                    window.location.href = redirectUrl;
                 } catch (error) {
                     errorDiv.textContent = error.message || "Invalid login credentials.";
                     errorDiv.style.display = 'block';
                     loginBtn.disabled = false;
-                    loginBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Secure Login';
+                    loginBtn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Login to Funnel';
                 }
             });
         });

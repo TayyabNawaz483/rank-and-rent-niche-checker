@@ -1,0 +1,10 @@
+
+/stage1 /funnel.html 200
+/stage2 /funnel.html 200
+/stage3 /funnel.html 200
+/stage4 /funnel.html 200
+/funnel-login /funnel-login.html 200
+/admin /admin-login.html 200
+/admin-dashboard /admin-dashboard.html 200
+/sheet /index.html 200
+/failed /failed-niches.html 200

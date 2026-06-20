@@ -1,0 +1,1268 @@
+/**
+ * Funnel Pipeline — Core Logic
+ * 4-stage keyword research pipeline system
+ */
+
+(function () {
+    'use strict';
+
+    // ─── Supabase Setup ───
+    const SUPABASE_URL = localStorage.getItem('supabase_url') || 'https://vbxxwiqkyjijqlloyhsz.supabase.co';
+    const SUPABASE_KEY = localStorage.getItem('supabase_key') || 'sb_publishable_CpOBGqQsKggJ7VejenxLBw_Coy6fMgS';
+
+    let supabase = null;
+    let currentUserRole = 'admin'; // default to admin for now — will be set by auth
+    let allPipelineData = [];
+
+    // ─── Initialization ───
+    document.addEventListener('DOMContentLoaded', async () => {
+        initTheme();
+
+        // Enforce funnel-specific login check using the auth service
+        let hasSession = false;
+        let session = null;
+        if (window.AuthService && window.AuthService.getClient()) {
+            try {
+                const res = await window.AuthService.getClient().auth.getSession();
+                if (res && res.data && res.data.session) {
+                    session = res.data.session;
+                    hasSession = true;
+                }
+            } catch (e) {
+                console.error("Auth check failed:", e);
+            }
+        }
+
+        if (!hasSession) {
+            // Save current path to redirect back after login
+            const intendedPath = window.location.pathname;
+            if (intendedPath && intendedPath !== '/funnel-login') {
+                sessionStorage.setItem('funnel_login_redirect', intendedPath);
+            }
+            window.location.href = '/funnel-login';
+            return;
+        }
+
+        // 1. Get role & assigned stage
+        const user = session.user;
+        const userRole = window.AuthService.getUserRole(user);
+        
+        let assignedStage = null;
+        if (userRole === 'stage_1') assignedStage = 1;
+        else if (userRole === 'stage_2') assignedStage = 2;
+        else if (userRole === 'stage_3') assignedStage = 3;
+        else if (userRole === 'stage_4') assignedStage = 4;
+        else if (userRole === 'admin') assignedStage = 'admin';
+
+        // 2. Get requested stage from URL path
+        const path = window.location.pathname;
+        let requestedStage = null;
+        if (path.includes('/stage1') || path.endsWith('stage1')) requestedStage = 1;
+        else if (path.includes('/stage2') || path.endsWith('stage2')) requestedStage = 2;
+        else if (path.includes('/stage3') || path.endsWith('stage3')) requestedStage = 3;
+        else if (path.includes('/stage4') || path.endsWith('stage4')) requestedStage = 4;
+
+        // 3. Verify access and redirect if necessary
+        if (assignedStage !== 'admin') {
+            // Workers cannot access main /funnel page or wrong stage page
+            if (requestedStage === null || requestedStage !== assignedStage) {
+                window.location.replace('/stage' + assignedStage);
+                return;
+            }
+        }
+
+        initSupabase();
+
+        // 4. Update Navbar User Profile Badge
+        const emailSpan = document.getElementById('userBadgeEmail');
+        const roleSpan = document.getElementById('userBadgeRole');
+        const badgeContainer = document.getElementById('userBadgeContainer');
+        if (emailSpan && roleSpan && badgeContainer) {
+            emailSpan.textContent = user.email;
+            if (assignedStage === 'admin') {
+                roleSpan.textContent = 'Admin';
+                roleSpan.style.background = 'var(--primary)';
+                roleSpan.style.borderColor = 'transparent';
+                roleSpan.style.color = 'white';
+
+                const adminDashboardBtn = document.getElementById('adminDashboardBtn');
+                if (adminDashboardBtn) adminDashboardBtn.style.display = 'inline-block';
+            } else {
+                roleSpan.textContent = `Stage ${assignedStage}`;
+                let stageColor = 'var(--stage-1)';
+                if (assignedStage === 2) stageColor = 'var(--stage-2)';
+                else if (assignedStage === 3) stageColor = 'var(--stage-3)';
+                else if (assignedStage === 4) stageColor = 'var(--stage-4)';
+                roleSpan.style.background = stageColor;
+                roleSpan.style.borderColor = 'transparent';
+                roleSpan.style.color = 'black';
+            }
+            badgeContainer.style.display = 'flex';
+        }
+
+        // 5. Apply DOM Isolation and layout updates
+        if (assignedStage !== 'admin') {
+            // Remove other stage panels and tabs
+            for (let i = 1; i <= 4; i++) {
+                if (i !== assignedStage) {
+                    const p = document.getElementById(`panel${i}`);
+                    if (p) p.remove();
+                    const t = document.querySelector(`.funnel-tab[data-stage="${i}"]`);
+                    if (t) t.remove();
+                }
+            }
+
+            // Hide overall tabs bar and pipeline bar
+            const tabsBar = document.getElementById('funnelTabs');
+            if (tabsBar) tabsBar.style.display = 'none';
+            const pipelineBar = document.getElementById('pipelineBar');
+            if (pipelineBar) pipelineBar.style.display = 'none';
+
+            // Show worker header banner
+            const banner = document.getElementById('workerHeaderBanner');
+            const icon = document.getElementById('workerHeaderIcon');
+            const title = document.getElementById('workerHeaderTitle');
+            const subtitle = document.getElementById('workerHeaderSubtitle');
+            const meta = document.getElementById('workerHeaderMeta');
+
+            if (banner && icon && title && subtitle && meta) {
+                let color = 'var(--stage-1)';
+                let titleText = 'Stage 1 — Keywords Generator';
+                let subText = 'Paste new keywords and auto-detect niches for the pipeline.';
+                
+                if (assignedStage === 2) {
+                    color = 'var(--stage-2)';
+                    titleText = 'Stage 2 — Keyword Difficulty (KD) Check';
+                    subText = 'Check KD in Moz (target ≤ 10) and submit passing keywords.';
+                } else if (assignedStage === 3) {
+                    color = 'var(--stage-3)';
+                    titleText = 'Stage 3 — Google Maps/GMB Check';
+                    subText = 'Verify city GMB density (10-15+) and reviews (top 3 ≤ 100).';
+                } else if (assignedStage === 4) {
+                    color = 'var(--stage-4)';
+                    titleText = 'Stage 4 — SERP Analysis & Finalization';
+                    subText = 'Analyze competitor DA (<10 ≥ 4), R&R site presence, and directories.';
+                }
+
+                icon.style.background = color;
+                icon.textContent = assignedStage;
+                title.textContent = titleText;
+                subtitle.textContent = subText;
+                meta.textContent = 'Worker Session';
+                banner.style.display = 'flex';
+            }
+
+            // Ensure our assigned panel is active
+            const activePanel = document.getElementById(`panel${assignedStage}`);
+            if (activePanel) {
+                activePanel.classList.add('active');
+            }
+        } else {
+            // Admin can see requested stage, default to 1 if none
+            initTabs();
+            const startStage = requestedStage || 1;
+            activateTab(startStage);
+        }
+
+        initStage1();
+        initStage2();
+        initStage3();
+        initStage4();
+        await loadAllPipelineData();
+    });
+
+    // ─── Supabase Init ───
+    function initSupabase() {
+        try {
+            if (window.AuthService && window.AuthService.getClient()) {
+                supabase = window.AuthService.getClient();
+            } else if (window.supabase && window.supabase.createClient) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        } catch (e) {
+            console.warn('Supabase init failed, using localStorage fallback:', e);
+        }
+    }
+
+    // ─── Theme ───
+    function initTheme() {
+        const savedTheme = localStorage.getItem('rank_rent_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+
+        const themeBtn = document.getElementById('themeToggleBtn');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('rank_rent_theme', next);
+                updateThemeIcon(next);
+            });
+        }
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                if (window.AuthService && window.AuthService.getClient()) {
+                    await window.AuthService.getClient().auth.signOut();
+                }
+                window.location.href = '/funnel-login';
+            });
+        }
+    }
+
+    function updateThemeIcon(theme) {
+        const icon = document.getElementById('themeIcon');
+        if (icon) {
+            icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        }
+    }
+
+    // ─── Tab System ───
+    function initTabs() {
+        const tabs = document.querySelectorAll('.funnel-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const stage = tab.dataset.stage;
+                activateTab(stage);
+            });
+        });
+    }
+
+    function activateTab(stage) {
+        // Update tabs
+        document.querySelectorAll('.funnel-tab').forEach(t => t.classList.remove('active'));
+        const activeTab = document.querySelector(`.funnel-tab[data-stage="${stage}"]`);
+        if (activeTab) activeTab.classList.add('active');
+
+        // Update panels
+        document.querySelectorAll('.funnel-panel').forEach(p => {
+            p.classList.remove('active');
+            p.style.animation = 'none';
+        });
+        const activePanel = document.getElementById(`panel${stage}`);
+        if (activePanel) {
+            activePanel.classList.add('active');
+            // Re-trigger animation
+            void activePanel.offsetWidth;
+            activePanel.style.animation = '';
+        }
+    }
+
+    // ─── Data Layer (localStorage fallback) ───
+    function getPipelineData() {
+        try {
+            return JSON.parse(localStorage.getItem('funnel_pipeline_data') || '[]');
+        } catch { return []; }
+    }
+
+    function savePipelineData(data) {
+        localStorage.setItem('funnel_pipeline_data', JSON.stringify(data));
+        allPipelineData = data;
+    }
+
+    async function loadAllPipelineData() {
+        // Try Supabase first
+        if (supabase) {
+            try {
+                const { data, error } = await supabase
+                    .from('pipeline_keywords')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (!error && data) {
+                    allPipelineData = data;
+                    savePipelineData(data);
+                    updateAllViews();
+                    return;
+                }
+            } catch (e) {
+                console.warn('Supabase fetch failed, using localStorage:', e);
+            }
+        }
+
+        // Fallback to localStorage
+        allPipelineData = getPipelineData();
+        updateAllViews();
+    }
+
+    async function insertPipelineRows(rows) {
+        // Save to localStorage
+        const existing = getPipelineData();
+        const updated = [...rows, ...existing];
+        savePipelineData(updated);
+
+        // Try Supabase
+        if (supabase) {
+            try {
+                await supabase.from('pipeline_keywords').insert(rows);
+            } catch (e) {
+                console.warn('Supabase insert failed:', e);
+            }
+        }
+
+        allPipelineData = updated;
+    }
+
+    async function updatePipelineRows(batchId, updates) {
+        // Update localStorage
+        const data = getPipelineData();
+        data.forEach(row => {
+            if (row.batch_id === batchId) {
+                Object.assign(row, updates);
+            }
+        });
+        savePipelineData(data);
+
+        // Try Supabase
+        if (supabase) {
+            try {
+                await supabase
+                    .from('pipeline_keywords')
+                    .update(updates)
+                    .eq('batch_id', batchId);
+            } catch (e) {
+                console.warn('Supabase update failed:', e);
+            }
+        }
+
+        allPipelineData = data;
+    }
+
+    // ─── Update All Views ───
+    function updateAllViews() {
+        updatePipelineStats();
+        updateStage1History();
+        updateStageView(2);
+        updateStageView(3);
+        updateStageView(4);
+    }
+
+    function updatePipelineStats() {
+        for (let s = 1; s <= 4; s++) {
+            const pending = allPipelineData.filter(r => r.stage === s && r.status === 'pending');
+            const dot = document.getElementById(`pipelineDot${s}`);
+            const count = document.getElementById(`pipelineCount${s}`);
+            const tabCount = document.getElementById(`tabCount${s}`);
+            const stageEl = dot?.closest('.pipeline-stage');
+
+            if (dot) dot.textContent = pending.length;
+            if (count) count.textContent = `${pending.length} pending`;
+            if (tabCount) tabCount.textContent = pending.length;
+            if (stageEl) {
+                stageEl.classList.toggle('has-pending', pending.length > 0);
+            }
+        }
+    }
+
+    // ─── STAGE 1 LOGIC ───
+    function initStage1() {
+        const textarea = document.getElementById('stage1Textarea');
+        if (!textarea) return;
+        const submitBtn = document.getElementById('stage1SubmitBtn');
+        const nicheInput = document.getElementById('stage1Niche');
+        const stateSelect = document.getElementById('stage1State');
+
+        textarea.addEventListener('input', () => {
+            parseStage1Preview();
+        });
+
+        // Re-render preview when state or niche changes
+        stateSelect.addEventListener('change', () => {
+            parseStage1Preview();
+        });
+
+        nicheInput.addEventListener('input', () => {
+            parseStage1Preview();
+        });
+
+        submitBtn.addEventListener('click', () => {
+            submitStage1();
+        });
+    }
+
+    function parseStage1Preview() {
+        const textarea = document.getElementById('stage1Textarea');
+        const raw = textarea.value.trim();
+        const previewContainer = document.getElementById('stage1Preview');
+        const previewBody = document.getElementById('stage1PreviewBody');
+        const kwCount = document.getElementById('stage1KwCount');
+        const nicheLabel = document.getElementById('stage1NicheLabel');
+        const nicheInput = document.getElementById('stage1Niche');
+        const submitBtn = document.getElementById('stage1SubmitBtn');
+
+        if (!raw) {
+            previewContainer.style.display = 'none';
+            submitBtn.disabled = true;
+            return;
+        }
+
+        const lines = raw.split('\n').filter(l => l.trim());
+        if (lines.length === 0) {
+            previewContainer.style.display = 'none';
+            submitBtn.disabled = true;
+            return;
+        }
+
+        // Parse each line: keyword [TAB] volume
+        let parsed = lines.map(line => {
+            const parts = line.split('\t');
+            const keyword = parts[0].trim();
+            const volume = parts.length > 1 ? parseInt(parts[parts.length - 1].trim()) : null;
+            return { keyword, volume: isNaN(volume) ? null : volume };
+        }).filter(p => p.keyword);
+
+        // Remove duplicates (case-insensitive, keep first occurrence)
+        const seen = new Set();
+        const beforeCount = parsed.length;
+        parsed = parsed.filter(p => {
+            const key = p.keyword.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+        const dupsRemoved = beforeCount - parsed.length;
+        if (dupsRemoved > 0) {
+            showToast(`⚠️ ${dupsRemoved} duplicate keyword(s) removed`, 'warning');
+        }
+
+        // Auto-detect niche (common prefix) — always update on new paste
+        const detectedNiche = autoDetectNiche(parsed.map(p => p.keyword));
+        if (detectedNiche) {
+            nicheInput.value = detectedNiche;
+        }
+
+        const niche = nicheInput.value || detectedNiche || '';
+        const state = document.getElementById('stage1State').value;
+
+        // Check for keywords already in pipeline (keyword + state match)
+        // Only check when state is selected (same city name can exist in different states)
+        const newKeywords = [];
+        const duplicateKeywords = [];
+
+        if (state) {
+            const existingKeywords = new Map();
+            allPipelineData.forEach(row => {
+                const key = `${row.keyword.toLowerCase()}|${(row.state || '').toLowerCase()}`;
+                if (!existingKeywords.has(key) || row.stage > existingKeywords.get(key).stage) {
+                    existingKeywords.set(key, { stage: row.stage, status: row.status });
+                }
+            });
+
+            console.log('🔍 Duplicate check — State:', state, '| Pipeline rows:', allPipelineData.length, '| Existing keys:', existingKeywords.size);
+            console.log('🔍 Sample existing keys:', [...existingKeywords.keys()].slice(0, 5));
+            console.log('🔍 Sample pasted key:', parsed.length > 0 ? `${parsed[0].keyword.toLowerCase()}|${state.toLowerCase()}` : 'none');
+
+            parsed.forEach(p => {
+                const key = `${p.keyword.toLowerCase()}|${state.toLowerCase()}`;
+                const existing = existingKeywords.get(key);
+                if (existing) {
+                    duplicateKeywords.push({ ...p, existingStage: existing.stage, existingStatus: existing.status });
+                } else {
+                    newKeywords.push(p);
+                }
+            });
+
+            if (duplicateKeywords.length > 0) {
+                showToast(`⚠️ ${duplicateKeywords.length} keyword(s) already in pipeline (${state}) — skipped`, 'warning');
+            }
+        } else {
+            newKeywords.push(...parsed);
+        }
+
+        // Build preview table — show new keywords normally, flag duplicates
+        let html = '';
+        let rowNum = 0;
+        newKeywords.forEach(p => {
+            rowNum++;
+            const city = extractCity(p.keyword, niche);
+            html += `<tr>
+                <td style="color: var(--text-muted); font-size: 0.75rem;">${rowNum}</td>
+                <td style="font-family: monospace; font-size: 0.82rem;">${escapeHtml(p.keyword)}</td>
+                <td>${escapeHtml(niche)}</td>
+                <td>${escapeHtml(city)}</td>
+                <td>${escapeHtml(state || '—')}</td>
+                <td style="font-weight: 600;">${p.volume !== null ? p.volume.toLocaleString() : '—'}</td>
+            </tr>`;
+        });
+        duplicateKeywords.forEach(p => {
+            rowNum++;
+            const city = extractCity(p.keyword, niche);
+            const stageLabel = `Stage ${p.existingStage}`;
+            html += `<tr style="opacity: 0.5; text-decoration: line-through;">
+                <td style="color: var(--text-muted); font-size: 0.75rem;">${rowNum}</td>
+                <td style="font-family: monospace; font-size: 0.82rem;">${escapeHtml(p.keyword)}</td>
+                <td>${escapeHtml(niche)}</td>
+                <td>${escapeHtml(city)}</td>
+                <td><span style="background: #f59e0b; color: #000; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">${stageLabel}</span></td>
+                <td style="font-weight: 600;">${p.volume !== null ? p.volume.toLocaleString() : '—'}</td>
+            </tr>`;
+        });
+
+        previewBody.innerHTML = html;
+        kwCount.textContent = `${newKeywords.length} new` + (duplicateKeywords.length > 0 ? `, ${duplicateKeywords.length} skipped` : '');
+        nicheLabel.textContent = niche || '—';
+        previewContainer.style.display = 'block';
+        submitBtn.disabled = newKeywords.length === 0;
+
+        // Store only new keywords for submission
+        window._stage1NewKeywords = newKeywords;
+    }
+
+    function autoDetectNiche(keywords) {
+        if (keywords.length === 0) return '';
+        if (keywords.length === 1) {
+            // For a single keyword, take everything except the last word as niche
+            const words = keywords[0].split(' ');
+            if (words.length <= 1) return keywords[0];
+            return words.slice(0, -1).join(' ');
+        }
+
+        // Find common prefix words
+        const wordArrays = keywords.map(k => k.toLowerCase().split(' '));
+        const minLen = Math.min(...wordArrays.map(a => a.length));
+        let commonWords = [];
+
+        for (let i = 0; i < minLen - 1; i++) {
+            const word = wordArrays[0][i];
+            if (wordArrays.every(arr => arr[i] === word)) {
+                commonWords.push(word);
+            } else {
+                break;
+            }
+        }
+
+        return commonWords.join(' ');
+    }
+
+    function extractCity(keyword, niche) {
+        if (!niche) {
+            const words = keyword.split(' ');
+            return words[words.length - 1];
+        }
+        const lower = keyword.toLowerCase();
+        const nicheL = niche.toLowerCase();
+        if (lower.startsWith(nicheL)) {
+            return keyword.substring(niche.length).trim();
+        }
+        return keyword;
+    }
+
+    async function submitStage1() {
+        const textarea = document.getElementById('stage1Textarea');
+        const nicheInput = document.getElementById('stage1Niche');
+        const stateSelect = document.getElementById('stage1State');
+        const submitBtn = document.getElementById('stage1SubmitBtn');
+
+        const niche = nicheInput.value.trim();
+        const state = stateSelect.value;
+
+        if (!niche) {
+            showToast('Please enter a niche name', 'error');
+            return;
+        }
+
+        // Use pre-filtered keywords from preview (duplicates already removed)
+        const newKeywords = window._stage1NewKeywords;
+        if (!newKeywords || newKeywords.length === 0) {
+            showToast('No new keywords to submit', 'error');
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+
+        const batchId = generateId();
+        const now = new Date().toISOString();
+
+        const rows = newKeywords.map(p => {
+            const city = extractCity(p.keyword, niche);
+            return {
+                id: generateId(),
+                keyword: p.keyword,
+                niche: niche,
+                city: city,
+                state: state || null,
+                volume: p.volume,
+                stage: 1,
+                batch_id: batchId,
+                batch_label: `${niche} — ${new Date().toLocaleDateString()}`,
+                status: 'pending',
+                stage_1_at: now,
+                created_at: now
+            };
+        });
+
+        await insertPipelineRows(rows);
+
+        // Reset form
+        textarea.value = '';
+        nicheInput.value = '';
+        stateSelect.selectedIndex = 0;
+        document.getElementById('stage1Preview').style.display = 'none';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-rocket"></i> Submit to Pipeline';
+        window._stage1NewKeywords = null;
+
+        showToast(`${rows.length} keywords submitted to pipeline!`, 'success');
+        updateAllViews();
+    }
+
+    // Stage 1 History
+    function updateStage1History() {
+        const container = document.getElementById('stage1History');
+        if (!container) return;
+        const stage1Data = allPipelineData.filter(r => r.stage === 1);
+
+        // Group by batch_id
+        const batches = groupByBatch(stage1Data);
+
+        if (batches.length === 0) {
+            container.innerHTML = `<div class="empty-state" style="padding: 1.5rem;">
+                <i class="fa-solid fa-inbox" style="font-size: 1.5rem;"></i>
+                <p style="margin-top: 0.5rem;">No submissions yet</p>
+            </div>`;
+            return;
+        }
+
+        let html = '';
+        batches.forEach(batch => {
+            const date = new Date(batch.rows[0].created_at).toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+            html += `<div class="history-card">
+                <div class="history-icon"><i class="fa-solid fa-folder"></i></div>
+                <div class="history-info">
+                    <div class="history-niche">${escapeHtml(batch.niche)}</div>
+                    <div class="history-meta">${batch.rows.length} keywords · ${date}</div>
+                </div>
+                <span class="group-badge ${batch.status === 'checked' ? 'checked-badge' : 'pending-badge'}">
+                    ${batch.status === 'checked' ? '✓' : '⏳'}
+                </span>
+            </div>`;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // ─── STAGE 2/3/4 LOGIC (shared) ───
+    function initStage2() { initStageN(2); }
+    function initStage3() { initStageN(3); }
+    function initStage4() { initStageN(4); }
+
+    function initStageN(stageNum) {
+        const textarea = document.getElementById(`stage${stageNum}Textarea`);
+        if (!textarea) return;
+        const previewBtn = document.getElementById(`stage${stageNum}PreviewBtn`);
+        const submitBtn = document.getElementById(`stage${stageNum}SubmitBtn`);
+        const groupSelect = document.getElementById(`stage${stageNum}GroupSelect`);
+
+        // Preview button: match keywords and show preview table with notes
+        if (previewBtn) {
+            previewBtn.addEventListener('click', () => {
+                previewStageN(stageNum);
+            });
+        }
+
+        // Submit button: submit matched keywords with notes
+        if (submitBtn) {
+            submitBtn.addEventListener('click', () => {
+                submitStageN(stageNum);
+            });
+        }
+    }
+
+    function updateStageView(stageNum) {
+        const prevStage = stageNum - 1;
+
+        // Get pending groups from previous stage
+        const pendingData = allPipelineData.filter(r => r.stage === prevStage && r.status === 'pending');
+        const checkedData = allPipelineData.filter(r => r.stage === prevStage && r.status === 'checked');
+
+        const pendingBatches = groupByBatch(pendingData);
+        const checkedBatches = groupByBatch(checkedData);
+
+        // Render pending groups
+        const pendingContainer = document.getElementById(`stage${stageNum}PendingGroups`);
+        if (pendingContainer) {
+            if (pendingBatches.length === 0) {
+                pendingContainer.innerHTML = `<div class="empty-state">
+                    <i class="fa-solid fa-hourglass-start"></i>
+                    <h3>No keywords waiting</h3>
+                    <p>Keywords from Stage ${prevStage} will appear here</p>
+                </div>`;
+            } else {
+                pendingContainer.innerHTML = pendingBatches.map(batch =>
+                    renderBatchGroup(batch, 'pending', stageNum)
+                ).join('');
+                // Attach toggle and copy events
+                attachBatchEvents(pendingContainer);
+            }
+        }
+
+        // Render checked groups
+        const checkedContainer = document.getElementById(`stage${stageNum}CheckedGroups`);
+        if (checkedContainer) {
+            if (checkedBatches.length === 0) {
+                checkedContainer.innerHTML = `<p style="font-size: 0.8rem; color: var(--text-muted); padding: 0.5rem 0;">No checked groups yet</p>`;
+            } else {
+                checkedContainer.innerHTML = checkedBatches.map(batch =>
+                    renderBatchGroup(batch, 'checked', stageNum)
+                ).join('');
+                attachBatchEvents(checkedContainer);
+            }
+        }
+
+        // Update group select dropdown
+        const groupSelect = document.getElementById(`stage${stageNum}GroupSelect`);
+        if (groupSelect) {
+            groupSelect.innerHTML = '<option value="" disabled selected>Select niche group</option>';
+            pendingBatches.forEach(batch => {
+                const opt = document.createElement('option');
+                opt.value = batch.batchId;
+                const stateLabel = batch.state ? ` — ${batch.state}` : '';
+                opt.textContent = `${batch.niche}${stateLabel} (${batch.rows.length} keywords)`;
+                groupSelect.appendChild(opt);
+            });
+        }
+    }
+
+    function renderBatchGroup(batch, type, currentStage) {
+        const isChecked = type === 'checked';
+        const keywords = batch.rows;
+        const date = new Date(keywords[0].created_at).toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric'
+        });
+
+        // Build keyword list items — show note indicator for checked keywords that have notes
+        let kwListHtml = '';
+        keywords.forEach((kw, i) => {
+            const hasNote = kw.notes && kw.notes.trim().length > 0;
+            const noteIndicator = (isChecked && hasNote)
+                ? `<span style="color: #f59e0b; font-size: 0.75rem; margin-left: 0.5rem;" title="${escapeHtml(kw.notes)}">📝</span>`
+                : '';
+
+            kwListHtml += `<div class="keyword-item">
+                <span class="kw-num">${i + 1}.</span>
+                <span class="kw-text">${escapeHtml(kw.keyword)}</span>
+                ${kw.state ? `<span class="kw-vol" style="color: var(--primary); font-weight: 600;">${escapeHtml(kw.state)}</span>` : ''}
+                ${kw.volume ? `<span class="kw-vol">vol: ${kw.volume.toLocaleString()}</span>` : ''}
+                ${noteIndicator}
+            </div>`;
+        });
+
+        // Build batch copy buttons
+        const batchSize = 100;
+        let copyButtonsHtml = '';
+        if (!isChecked) {
+            if (keywords.length <= batchSize) {
+                copyButtonsHtml = `<button class="copy-batch-btn" data-batch-id="${batch.batchId}" data-start="0" data-end="${keywords.length}">
+                    <i class="fa-regular fa-clipboard"></i> Copy All ${keywords.length}
+                </button>`;
+            } else {
+                const numBatches = Math.ceil(keywords.length / batchSize);
+                for (let b = 0; b < numBatches; b++) {
+                    const start = b * batchSize;
+                    const end = Math.min(start + batchSize, keywords.length);
+                    copyButtonsHtml += `<button class="copy-batch-btn ${b > 0 ? 'secondary' : ''}" data-batch-id="${batch.batchId}" data-start="${start}" data-end="${end}">
+                        <i class="fa-regular fa-clipboard"></i> Copy ${start + 1}-${end}
+                    </button>`;
+                }
+            }
+        }
+
+        // Recheck button for checked groups
+        let recheckHtml = '';
+        if (isChecked) {
+            recheckHtml = `<button class="recheck-btn" data-batch-id="${batch.batchId}" data-stage="${currentStage}">
+                <i class="fa-solid fa-rotate-right"></i> Re-check
+            </button>`;
+        }
+
+        const checkedInfo = isChecked && batch.checkedAt
+            ? `<span style="font-size: 0.75rem; color: var(--text-muted);">Checked ${new Date(batch.checkedAt).toLocaleDateString()}</span>`
+            : '';
+
+        const batchState = keywords[0].state || '';
+        const stateTag = batchState ? `<span style="color: var(--primary); font-size: 0.8rem; font-weight: 600; background: var(--stage-1-bg); padding: 0.1rem 0.4rem; border-radius: 4px;">${escapeHtml(batchState)}</span>` : '';
+
+        return `<div class="batch-group ${type}">
+            <div class="batch-group-header" data-toggle="batch-body-${batch.batchId}">
+                <div class="group-title">
+                    <i class="fa-solid fa-folder${isChecked ? '-open' : ''}"></i>
+                    <span>${escapeHtml(batch.niche)}</span>
+                    ${stateTag}
+                    <span style="color: var(--text-muted); font-weight: 400; font-size: 0.85rem;">(${keywords.length} keywords)</span>
+                </div>
+                <div class="group-meta">
+                    ${checkedInfo}
+                    <span class="group-badge ${isChecked ? 'checked-badge' : 'pending-badge'}">${isChecked ? 'CHECKED' : 'PENDING'}</span>
+                    ${recheckHtml}
+                    <span style="font-size: 0.75rem;">${date}</span>
+                    <i class="fa-solid fa-chevron-down batch-group-chevron"></i>
+                </div>
+            </div>
+            <div class="batch-group-body ${isChecked ? '' : 'open'}" id="batch-body-${batch.batchId}">
+                <div class="keyword-list-container">
+                    <div class="keyword-list">${kwListHtml}</div>
+                </div>
+                ${copyButtonsHtml ? `<div class="batch-actions">${copyButtonsHtml}</div>` : ''}
+            </div>
+        </div>`;
+    }
+
+    function attachBatchEvents(container) {
+        // Toggle expand/collapse
+        container.querySelectorAll('.batch-group-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                if (e.target.closest('.recheck-btn')) return; // Don't toggle on recheck click
+                const targetId = header.dataset.toggle;
+                const body = document.getElementById(targetId);
+                if (body) {
+                    body.classList.toggle('open');
+                    header.classList.toggle('expanded');
+                }
+            });
+        });
+
+        // Copy buttons
+        container.querySelectorAll('.copy-batch-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const batchId = btn.dataset.batchId;
+                const start = parseInt(btn.dataset.start);
+                const end = parseInt(btn.dataset.end);
+                copyBatchKeywords(batchId, start, end, btn);
+            });
+        });
+
+        // Recheck buttons
+        container.querySelectorAll('.recheck-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const batchId = btn.dataset.batchId;
+                await updatePipelineRows(batchId, { status: 'pending', checked_at: null });
+                showToast('Group moved back to pending', 'success');
+                updateAllViews();
+            });
+        });
+
+
+    }
+
+    function copyBatchKeywords(batchId, start, end, btnEl) {
+        const batchRows = allPipelineData
+            .filter(r => r.batch_id === batchId)
+            .sort((a, b) => (a.keyword || '').localeCompare(b.keyword || ''));
+
+        const slice = batchRows.slice(start, end);
+        const text = slice.map(r => r.keyword).join('\n');
+
+        navigator.clipboard.writeText(text).then(() => {
+            // Visual feedback
+            const origHTML = btnEl.innerHTML;
+            btnEl.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+            btnEl.classList.add('copied');
+            setTimeout(() => {
+                btnEl.innerHTML = origHTML;
+                btnEl.classList.remove('copied');
+            }, 2000);
+        }).catch(() => {
+            showToast('Failed to copy to clipboard', 'error');
+        });
+    }
+
+    // ─── Preview matched keywords with notes (stages 2, 3, 4) ───
+    let stagePreviewData = {}; // Holds matched data per stage for submit
+
+    function previewStageN(stageNum) {
+        const textarea = document.getElementById(`stage${stageNum}Textarea`);
+        const groupSelect = document.getElementById(`stage${stageNum}GroupSelect`);
+        const warningDiv = document.getElementById(`stage${stageNum}MatchWarning`);
+        const previewContainer = document.getElementById(`stage${stageNum}Preview`);
+        const previewBody = document.getElementById(`stage${stageNum}PreviewBody`);
+        const matchCount = document.getElementById(`stage${stageNum}MatchCount`);
+
+        const raw = textarea.value.trim();
+        const selectedBatchId = groupSelect.value;
+
+        if (!raw || !selectedBatchId) {
+            showToast('Please paste keywords and select a niche group first', 'error');
+            return;
+        }
+
+        const pastedKeywords = raw.split('\n').map(l => l.trim().toLowerCase()).filter(l => l);
+
+        // Get the batch rows from previous stage
+        const batchRows = allPipelineData.filter(
+            r => r.batch_id === selectedBatchId && r.status === 'pending'
+        );
+
+        const matched = [];
+        const unmatched = [];
+
+        pastedKeywords.forEach(pk => {
+            const found = batchRows.find(r => r.keyword.toLowerCase() === pk);
+            if (found) {
+                matched.push(found);
+            } else {
+                unmatched.push(pk);
+            }
+        });
+
+        // Show warnings for unmatched
+        if (unmatched.length > 0) {
+            warningDiv.innerHTML = `<div class="match-warning">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <div>
+                    <strong>${unmatched.length} keyword(s) could not be matched:</strong><br>
+                    ${unmatched.slice(0, 5).map(u => `• "${escapeHtml(u)}"`).join('<br>')}
+                    ${unmatched.length > 5 ? `<br>...and ${unmatched.length - 5} more` : ''}
+                </div>
+            </div>`;
+        } else {
+            warningDiv.innerHTML = '';
+        }
+
+        if (matched.length === 0) {
+            showToast('No keywords matched. Check your paste text.', 'error');
+            previewContainer.style.display = 'none';
+            return;
+        }
+
+        // Store matched data for submit
+        stagePreviewData[stageNum] = { matched, selectedBatchId };
+
+        // Build preview table with note inputs
+        matchCount.textContent = matched.length;
+        previewBody.innerHTML = matched.map((kw, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${escapeHtml(kw.keyword)}</td>
+                <td>${escapeHtml(kw.city || '—')}</td>
+                <td>${kw.volume ? kw.volume.toLocaleString() : '—'}</td>
+                <td>
+                    <input type="${stageNum === 2 ? 'number' : 'text'}" class="preview-note-input" 
+                           data-kw-id="${kw.id}" 
+                           placeholder="${stageNum === 2 ? 'KD (0-100)...' : 'Write note...'}"
+                           ${stageNum === 2 ? 'min="0" max="100"' : ''}
+                           style="width: 100%; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem;">
+                </td>
+            </tr>
+        `).join('');
+
+        previewContainer.style.display = 'block';
+        previewContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Submit for stages 2, 3, 4 — uses preview data
+    async function submitStageN(stageNum) {
+        const textarea = document.getElementById(`stage${stageNum}Textarea`);
+        const groupSelect = document.getElementById(`stage${stageNum}GroupSelect`);
+        const submitBtn = document.getElementById(`stage${stageNum}SubmitBtn`);
+        const previewContainer = document.getElementById(`stage${stageNum}Preview`);
+
+        const preview = stagePreviewData[stageNum];
+        if (!preview || preview.matched.length === 0) {
+            showToast('Please preview keywords first', 'error');
+            return;
+        }
+
+        const { matched, selectedBatchId } = preview;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+        // Collect notes from preview inputs
+        const noteInputs = previewContainer.querySelectorAll('.preview-note-input');
+        const notesMap = {};
+        let validationFailed = false;
+        noteInputs.forEach(input => {
+            const kwId = input.dataset.kwId;
+            const noteText = input.value.trim();
+            if (stageNum === 2) {
+                const num = parseInt(noteText, 10);
+                if (!noteText) {
+                    showToast('Keyword Difficulty (KD) is required for each keyword.', 'error');
+                    validationFailed = true;
+                    input.focus();
+                } else if (isNaN(num) || num < 0 || num > 100) {
+                    showToast('Keyword Difficulty (KD) must be a valid number between 0 and 100.', 'error');
+                    validationFailed = true;
+                    input.focus();
+                } else {
+                    notesMap[kwId] = noteText;
+                }
+            } else {
+                if (noteText) {
+                    notesMap[kwId] = noteText;
+                }
+            }
+        });
+
+        if (validationFailed) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = getSubmitBtnText(stageNum);
+            return;
+        }
+
+        // Save notes to the original pipeline rows (previous stage rows)
+        for (const [kwId, noteText] of Object.entries(notesMap)) {
+            const row = allPipelineData.find(r => r.id === kwId);
+            if (row) row.notes = noteText;
+
+            if (supabase) {
+                try {
+                    await supabase
+                        .from('pipeline_keywords')
+                        .update({ notes: noteText })
+                        .eq('id', kwId);
+                } catch (e) {
+                    console.warn('Note save failed:', e);
+                }
+            }
+        }
+        savePipelineData(allPipelineData);
+
+        // Mark the original batch as checked
+        await updatePipelineRows(selectedBatchId, {
+            status: 'checked',
+            checked_at: new Date().toISOString()
+        });
+
+        if (stageNum === 4) {
+            // Stage 4: Save to main niches table
+            await saveFinalToNiches(matched);
+
+            // Also create stage 4 records for tracking
+            const newBatchId = generateId();
+            const now = new Date().toISOString();
+            const newRows = matched.map(m => ({
+                id: generateId(),
+                keyword: m.keyword,
+                niche: m.niche,
+                city: m.city,
+                state: m.state,
+                volume: m.volume,
+                stage: 4,
+                batch_id: newBatchId,
+                batch_label: m.batch_label,
+                status: 'checked',
+                stage_4_at: now,
+                checked_at: now,
+                created_at: now
+            }));
+            await insertPipelineRows(newRows);
+            showToast(`🏆 ${matched.length} keywords saved to main dashboard!`, 'success');
+        } else {
+            // Stages 2 & 3: Create new batch in current stage
+            const newBatchId = generateId();
+            const now = new Date().toISOString();
+            const stageKey = `stage_${stageNum}_at`;
+
+            const newRows = matched.map(m => ({
+                id: generateId(),
+                keyword: m.keyword,
+                niche: m.niche,
+                city: m.city,
+                state: m.state,
+                volume: m.volume,
+                stage: stageNum,
+                batch_id: newBatchId,
+                batch_label: m.batch_label,
+                status: 'pending',
+                [stageKey]: now,
+                created_at: now
+            }));
+
+            await insertPipelineRows(newRows);
+            showToast(`${matched.length} keywords sent to Stage ${stageNum + 1}!`, 'success');
+        }
+
+        // Reset
+        textarea.value = '';
+        groupSelect.selectedIndex = 0;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = getSubmitBtnText(stageNum);
+        previewContainer.style.display = 'none';
+        stagePreviewData[stageNum] = null;
+
+        updateAllViews();
+    }
+
+    // ─── Notepad: Save keyword note ───
+    async function saveKeywordNote(kwId, noteText) {
+        // Update in allPipelineData
+        const row = allPipelineData.find(r => r.id === kwId);
+        if (row) row.notes = noteText;
+
+        // Update localStorage
+        savePipelineData(allPipelineData);
+
+        // Update Supabase
+        if (supabase) {
+            try {
+                await supabase
+                    .from('pipeline_keywords')
+                    .update({ notes: noteText || null })
+                    .eq('id', kwId);
+            } catch (e) {
+                console.warn('Supabase note save failed:', e);
+            }
+        }
+    }
+
+    // ─── Collect all stage notes for a keyword when finalizing ───
+    function collectKeywordNotes(keyword) {
+        const notes = {};
+        // Search through all pipeline data for this keyword across stages
+        // Notes are written by Stage N worker on rows with stage = N-1 (previous stage)
+        // So we use stage + 1 to get the correct label
+        allPipelineData.forEach(row => {
+            if (row.keyword && row.keyword.toLowerCase() === keyword.toLowerCase() && row.notes && row.notes.trim()) {
+                // row.stage is the stage that CREATED the row, but notes were written
+                // by the NEXT stage's worker, so the note belongs to stage + 1
+                const writerStage = row.stage + 1;
+                if (writerStage < 2 || writerStage > 4) return; // Only stages 2-4 have notes
+                const stageKey = `stage_${writerStage}`;
+                // Keep the latest note if duplicates
+                if (!notes[stageKey] || new Date(row.created_at) > new Date(notes[stageKey].date)) {
+                    notes[stageKey] = { text: row.notes.trim(), date: row.created_at };
+                }
+            }
+        });
+
+        // Build final JSON
+        const result = {};
+        if (notes.stage_2) result.stage_2 = notes.stage_2.text;
+        if (notes.stage_3) result.stage_3 = notes.stage_3.text;
+        if (notes.stage_4) result.stage_4 = notes.stage_4.text;
+
+        return Object.keys(result).length > 0 ? result : null;
+    }
+
+    // Save final keywords to main niches table
+    async function saveFinalToNiches(keywords) {
+        const rows = keywords.map(kw => {
+            const collectedNotes = collectKeywordNotes(kw.keyword);
+            const stage2Kd = (collectedNotes && collectedNotes.stage_2) ? parseInt(collectedNotes.stage_2, 10) : 0;
+            
+            // Delete stage_2 from collectedNotes so it's not saved in the notes column
+            if (collectedNotes) {
+                delete collectedNotes.stage_2;
+            }
+            const cleanNotes = (collectedNotes && Object.keys(collectedNotes).length > 0) ? collectedNotes : null;
+
+            return {
+                niche: kw.niche,
+                city: kw.city,
+                state: kw.state || null,
+                keyword: kw.keyword,
+                volume: kw.volume || 0,
+                // Set all criteria to passing defaults since they're already proven, except KD
+                kd: isNaN(stage2Kd) ? 0 : stage2Kd,
+                da_count: 4,
+                gmb_reviews: [0, 0, 0],
+                gmb_count: 10,
+                directory_count: 1,
+                competitor_traffic: 50,
+                rr_site_count: 1,
+                zip_codes: 2,
+                population: 0,
+                status: 'PASS',
+                fail_reasons: [],
+                notes: cleanNotes,
+                created_at: new Date().toISOString()
+            };
+        });
+
+        let savedToSupabase = false;
+        if (supabase) {
+            try {
+                const { error } = await supabase.from('niches').insert(rows);
+                if (error) {
+                    console.error('Supabase niches insert error:', error);
+                    throw error;
+                }
+                savedToSupabase = true;
+            } catch (e) {
+                console.warn('Supabase niches insert failed, falling back to LocalStorage:', e);
+            }
+        }
+
+        // Always save to localStorage or run fallback if Supabase insert failed
+        if (!savedToSupabase) {
+            try {
+                const existing = JSON.parse(localStorage.getItem('rank_rent_niches') || '[]');
+                localStorage.setItem('rank_rent_niches', JSON.stringify([...rows, ...existing]));
+                console.log('Saved niches to LocalStorage fallback');
+            } catch (err) {
+                console.error('Failed to save niches to LocalStorage fallback:', err);
+            }
+        }
+    }
+
+    function getSubmitBtnText(stageNum) {
+        if (stageNum === 4) return '<i class="fa-solid fa-trophy"></i> Finalize & Save to Main Dashboard';
+        return `<i class="fa-solid fa-paper-plane"></i> Submit & Send to Stage ${stageNum + 1}`;
+    }
+
+    // ─── Helper Functions ───
+    function groupByBatch(rows) {
+        const map = {};
+        rows.forEach(r => {
+            if (!map[r.batch_id]) {
+                map[r.batch_id] = {
+                    batchId: r.batch_id,
+                    niche: r.niche,
+                    state: r.state || '',
+                    status: r.status,
+                    checkedAt: r.checked_at,
+                    rows: []
+                };
+            }
+            map[r.batch_id].rows.push(r);
+        });
+        return Object.values(map).sort((a, b) =>
+            new Date(b.rows[0].created_at) - new Date(a.rows[0].created_at)
+        );
+    }
+
+    function generateId() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('funnelToast');
+        const text = document.getElementById('funnelToastText');
+        const icon = toast.querySelector('i');
+
+        text.textContent = message;
+        toast.className = `funnel-toast ${type}`;
+        icon.className = type === 'success'
+            ? 'fa-solid fa-check-circle'
+            : 'fa-solid fa-exclamation-circle';
+
+        // Show
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        // Hide after 3s
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+})();

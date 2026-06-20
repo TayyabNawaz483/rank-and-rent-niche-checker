@@ -1,6 +1,8 @@
 // Admin Dashboard Logic
 
 let dbData = [];
+let failedDbData = [];
+let activeTab = 'active'; // 'active' or 'failed'
 let selectedIds = new Set();
 let adminClient = null;
 
@@ -34,6 +36,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     adminClient = window.AuthService.getClient();
 
+    // Enforce Admin Role Guard
+    try {
+        const { data: { user } } = await adminClient.auth.getUser();
+        const role = window.AuthService.getUserRole(user);
+        if (role !== 'admin') {
+            window.location.replace('/stage1');
+            return;
+        }
+    } catch (e) {
+        console.error("Admin verification failed:", e);
+        window.location.replace('/funnel-login');
+        return;
+    }
+
     setupAdminListeners();
     await fetchAdminData();
 });
@@ -46,21 +62,93 @@ function updateThemeIcon(theme) {
 }
 
 function setupAdminListeners() {
-    document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
-        const checkboxes = document.querySelectorAll('.row-checkbox');
-        if (e.target.checked) {
-            checkboxes.forEach(cb => {
-                cb.checked = true;
-                selectedIds.add(cb.value);
-            });
-        } else {
-            checkboxes.forEach(cb => {
-                cb.checked = false;
-                selectedIds.delete(cb.value);
-            });
-        }
-        updateBulkActionsBar();
-    });
+    // Tab switching event listeners
+    const tabActiveNiches = document.getElementById('tabActiveNiches');
+    const tabFailedNiches = document.getElementById('tabFailedNiches');
+
+    if (tabActiveNiches && tabFailedNiches) {
+        tabActiveNiches.style.cursor = 'pointer';
+        tabFailedNiches.style.cursor = 'pointer';
+
+        tabActiveNiches.addEventListener('click', async () => {
+            if (activeTab === 'active') return;
+            activeTab = 'active';
+            tabActiveNiches.classList.add('active');
+            tabFailedNiches.classList.remove('active');
+            
+            // UI Styling Updates
+            tabActiveNiches.style.color = 'var(--text-primary)';
+            tabActiveNiches.style.borderBottom = '2px solid var(--primary)';
+            tabActiveNiches.style.fontWeight = '700';
+            
+            tabFailedNiches.style.color = 'var(--text-secondary)';
+            tabFailedNiches.style.borderBottom = '2px solid transparent';
+            tabFailedNiches.style.fontWeight = '600';
+            
+            // Show evaluate button
+            const openAddModalBtn = document.getElementById('openAddModalBtn');
+            if (openAddModalBtn) openAddModalBtn.style.display = 'inline-flex';
+
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            if (exportCsvBtn) exportCsvBtn.innerHTML = '<i class="fa-solid fa-download"></i> Export All CSV';
+            
+            document.getElementById('selectAllCheckbox').checked = false;
+            selectedIds.clear();
+            updateBulkActionsBar();
+            
+            renderTableHeader();
+            await fetchAdminData();
+        });
+
+        tabFailedNiches.addEventListener('click', async () => {
+            if (activeTab === 'failed') return;
+            activeTab = 'failed';
+            tabFailedNiches.classList.add('active');
+            tabActiveNiches.classList.remove('active');
+            
+            // UI Styling Updates
+            tabFailedNiches.style.color = 'var(--text-primary)';
+            tabFailedNiches.style.borderBottom = '2px solid var(--primary)';
+            tabFailedNiches.style.fontWeight = '700';
+            
+            tabActiveNiches.style.color = 'var(--text-secondary)';
+            tabActiveNiches.style.borderBottom = '2px solid transparent';
+            tabActiveNiches.style.fontWeight = '600';
+            
+            // Hide evaluate button
+            const openAddModalBtn = document.getElementById('openAddModalBtn');
+            if (openAddModalBtn) openAddModalBtn.style.display = 'none';
+
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            if (exportCsvBtn) exportCsvBtn.innerHTML = '<i class="fa-solid fa-download"></i> Export Failed CSV';
+
+            document.getElementById('selectAllCheckbox').checked = false;
+            selectedIds.clear();
+            updateBulkActionsBar();
+            
+            renderTableHeader();
+            await fetchFailedNiches();
+        });
+    }
+
+    const selectAllCb = document.getElementById('selectAllCheckbox');
+    if (selectAllCb) {
+        selectAllCb.addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            if (e.target.checked) {
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    selectedIds.add(cb.value);
+                });
+            } else {
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                    selectedIds.delete(cb.value);
+                });
+            }
+            updateBulkActionsBar();
+        });
+    }
 
     document.getElementById('bulkDeleteBtn').addEventListener('click', handleBulkDelete);
     document.getElementById('exportCsvBtn').addEventListener('click', exportAdminCSV);
@@ -181,19 +269,18 @@ function renderTable() {
 
     dbData.forEach(item => {
         const tr = document.createElement('tr');
-        const passClass = item.status === 'PASS' ? 'pass' : 'fail';
         const dateStr = new Date(item.created_at).toLocaleDateString();
 
         tr.innerHTML = `
             <td class="checkbox-cell">
                 <input type="checkbox" class="row-checkbox" value="${item.id}">
             </td>
-            <td><span class="status-badge ${passClass}" style="padding: 0.15rem 0.5rem; font-size: 0.7rem;">${item.status}</span></td>
             <td style="font-weight: 600;">${escapeHtml(item.niche)}</td>
             <td>${escapeHtml(item.city)}${item.state ? ', ' + escapeHtml(item.state.toUpperCase()) : ''}</td>
             <td><code style="background: rgba(255,255,255,0.05); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(item.keyword)}</code></td>
             <td style="color: var(--primary); font-weight: 600;">${item.kd}</td>
             <td style="color: var(--secondary); font-weight: 600;">${item.volume}</td>
+            <td class="notes-cell">${renderNotesPills(item)}</td>
             <td style="color: var(--text-muted); font-size: 0.85rem;">${dateStr}</td>
             <td>
                 <button class="action-btn delete-btn" data-id="${item.id}" title="Delete Record">
@@ -224,6 +311,22 @@ function renderTable() {
             handleSingleDelete(id);
         });
     });
+
+    // Bind notes edit buttons
+    document.querySelectorAll('.notes-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            openNotesEditor(id);
+        });
+    });
+
+    // Bind notes pills click to open editor
+    document.querySelectorAll('.notes-pills').forEach(el => {
+        el.addEventListener('click', () => {
+            const id = el.getAttribute('data-id');
+            openNotesEditor(id);
+        });
+    });
 }
 
 function updateBulkActionsBar() {
@@ -244,16 +347,36 @@ async function handleSingleDelete(id) {
     console.log("User confirmation:", confirmed);
     if (!confirmed) return;
 
+    const targetTable = activeTab === 'active' ? 'niches' : 'failed_niches';
+
     try {
-        const { error } = await adminClient.from('niches').delete().eq('id', id);
+        const { error } = await adminClient.from(targetTable).delete().eq('id', id);
         if (error) throw error;
         
-        dbData = dbData.filter(item => item.id != id);
-        selectedIds.delete(id);
-        renderTable();
+        if (activeTab === 'active') {
+            dbData = dbData.filter(item => item.id != id);
+            selectedIds.delete(id);
+            renderTable();
+        } else {
+            failedDbData = failedDbData.filter(item => item.id != id);
+            selectedIds.delete(id);
+            localStorage.setItem('rank_rent_failed_niches', JSON.stringify(failedDbData));
+            renderFailedTable();
+        }
         updateBulkActionsBar();
     } catch (error) {
-        alert("Failed to delete record: " + error.message);
+        console.warn("Database delete failed, removing locally:", error);
+        if (activeTab === 'active') {
+            dbData = dbData.filter(item => item.id != id);
+            selectedIds.delete(id);
+            renderTable();
+        } else {
+            failedDbData = failedDbData.filter(item => item.id != id);
+            selectedIds.delete(id);
+            localStorage.setItem('rank_rent_failed_niches', JSON.stringify(failedDbData));
+            renderFailedTable();
+        }
+        updateBulkActionsBar();
     }
 }
 
@@ -262,18 +385,40 @@ async function handleBulkDelete() {
     if (!confirmed) return;
 
     const idsToDelete = Array.from(selectedIds);
+    const targetTable = activeTab === 'active' ? 'niches' : 'failed_niches';
+
     try {
-        const { error } = await adminClient.from('niches').delete().in('id', idsToDelete);
+        const { error } = await adminClient.from(targetTable).delete().in('id', idsToDelete);
         if (error) throw error;
         
-        dbData = dbData.filter(item => !selectedIds.has(item.id.toString()) && !selectedIds.has(item.id));
-        selectedIds.clear();
-        document.getElementById('selectAllCheckbox').checked = false;
-        
-        renderTable();
+        if (activeTab === 'active') {
+            dbData = dbData.filter(item => !selectedIds.has(item.id.toString()) && !selectedIds.has(item.id));
+            selectedIds.clear();
+            document.getElementById('selectAllCheckbox').checked = false;
+            renderTable();
+        } else {
+            failedDbData = failedDbData.filter(item => !selectedIds.has(item.id.toString()) && !selectedIds.has(item.id));
+            selectedIds.clear();
+            document.getElementById('selectAllCheckbox').checked = false;
+            localStorage.setItem('rank_rent_failed_niches', JSON.stringify(failedDbData));
+            renderFailedTable();
+        }
         updateBulkActionsBar();
     } catch (error) {
-        alert("Failed to bulk delete records: " + error.message);
+        console.warn("Database bulk delete failed, removing locally:", error);
+        if (activeTab === 'active') {
+            dbData = dbData.filter(item => !selectedIds.has(item.id.toString()) && !selectedIds.has(item.id));
+            selectedIds.clear();
+            document.getElementById('selectAllCheckbox').checked = false;
+            renderTable();
+        } else {
+            failedDbData = failedDbData.filter(item => !selectedIds.has(item.id.toString()) && !selectedIds.has(item.id));
+            selectedIds.clear();
+            document.getElementById('selectAllCheckbox').checked = false;
+            localStorage.setItem('rank_rent_failed_niches', JSON.stringify(failedDbData));
+            renderFailedTable();
+        }
+        updateBulkActionsBar();
     }
 }
 
@@ -375,50 +520,85 @@ function showDeleteConfirm(message, requiresWrittenConfirmation = false) {
 
 
 function exportAdminCSV() {
-    if (dbData.length === 0) {
-        alert("No records to export.");
-        return;
+    if (activeTab === 'active') {
+        if (dbData.length === 0) {
+            alert("No records to export.");
+            return;
+        }
+
+        const headers = [
+            "Status", "Niche", "City", "State", "Population", "Zip Codes", "Keyword", 
+            "KD", "Volume", "DA < 10 Count", "GMB Reviews", "Total GMBs", 
+            "Competitor Traffic", "Directory Count", "R&R Site Count", "Date Added"
+        ];
+
+        const rows = dbData.map(item => [
+            item.status,
+            `"${item.niche}"`,
+            `"${item.city}"`,
+            item.state || "",
+            item.population || "",
+            item.zip_codes || 0,
+            `"${item.keyword}"`,
+            item.kd,
+            item.volume,
+            item.da_count,
+            `"${item.gmb_reviews ? item.gmb_reviews.join(', ') : ''}"`,
+            item.gmb_count,
+            item.competitor_traffic,
+            item.directory_count !== undefined ? item.directory_count : (item.has_directory ? 1 : 0),
+            item.rr_site_count !== undefined ? item.rr_site_count : (item.has_rr_site ? 1 : 0),
+            new Date(item.created_at).toLocaleDateString()
+        ]);
+
+        const csvContent = [
+            headers.join(","),
+            ...rows.map(r => r.join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `evaluated_niches_export_${Date.now()}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } else {
+        if (failedDbData.length === 0) {
+            alert("No records to export.");
+            return;
+        }
+
+        const headers = [
+            "Niche", "City", "Keyword", "State", "Added By", "Date Added"
+        ];
+
+        const rows = failedDbData.map(item => [
+            `"${item.niche}"`,
+            `"${item.city || ''}"`,
+            `"${item.keyword}"`,
+            item.state || "",
+            `"${item.created_by || 'Unknown'}"`,
+            new Date(item.created_at).toLocaleDateString()
+        ]);
+
+        const csvContent = [
+            headers.join(","),
+            ...rows.map(r => r.join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `failed_niches_export_${Date.now()}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
-
-    const headers = [
-        "Status", "Niche", "City", "State", "Population", "Zip Codes", "Keyword", 
-        "KD", "Volume", "DA < 10 Count", "GMB Reviews", "Total GMBs", 
-        "Competitor Traffic", "Directory Count", "R&R Site Count", "Date Added"
-    ];
-
-    const rows = dbData.map(item => [
-        item.status,
-        `"${item.niche}"`,
-        `"${item.city}"`,
-        item.state || "",
-        item.population || "",
-        item.zip_codes || 0,
-        `"${item.keyword}"`,
-        item.kd,
-        item.volume,
-        item.da_count,
-        `"${item.gmb_reviews ? item.gmb_reviews.join(', ') : ''}"`,
-        item.gmb_count,
-        item.competitor_traffic,
-        item.directory_count !== undefined ? item.directory_count : (item.has_directory ? 1 : 0),
-        item.rr_site_count !== undefined ? item.rr_site_count : (item.has_rr_site ? 1 : 0),
-        new Date(item.created_at).toLocaleDateString()
-    ]);
-
-    const csvContent = [
-        headers.join(","),
-        ...rows.map(r => r.join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `admin_export_${Date.now()}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
 }
 
 function escapeHtml(str) {
@@ -843,4 +1023,308 @@ function showToast(message, type = 'success') {
         toast.style.transform = 'translateY(20px)';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+// ─── Notes Column Rendering ───
+function renderNotesPills(item) {
+    const notes = item.notes;
+    if (!notes || typeof notes !== 'object' || Object.keys(notes).length === 0) {
+        return `<div class="notes-pills" data-id="${item.id}">
+            <span class="notes-empty">—</span>
+            <button class="notes-edit-btn" data-id="${item.id}"><i class="fa-solid fa-plus"></i> Add</button>
+        </div>`;
+    }
+
+    let pills = '';
+    if (notes.stage_2) {
+        pills += `<div class="note-pill s2"><span class="note-stage-tag">S2:</span><span class="note-pill-text">${escapeHtml(notes.stage_2)}</span></div>`;
+    }
+    if (notes.stage_3) {
+        pills += `<div class="note-pill s3"><span class="note-stage-tag">S3:</span><span class="note-pill-text">${escapeHtml(notes.stage_3)}</span></div>`;
+    }
+    if (notes.stage_4) {
+        pills += `<div class="note-pill s4"><span class="note-stage-tag">S4:</span><span class="note-pill-text">${escapeHtml(notes.stage_4)}</span></div>`;
+    }
+
+    return `<div class="notes-pills" data-id="${item.id}">
+        ${pills}
+        <button class="notes-edit-btn" data-id="${item.id}"><i class="fa-solid fa-pen"></i> Edit</button>
+    </div>`;
+}
+
+// ─── Notes Modal Logic ───
+let notesEditingId = null;
+
+function setupNotesModal() {
+    const overlay = document.getElementById('notesModalOverlay');
+    const closeBtn = document.getElementById('notesModalClose');
+    const cancelBtn = document.getElementById('notesModalCancel');
+    const saveBtn = document.getElementById('notesModalSave');
+
+    if (closeBtn) closeBtn.addEventListener('click', () => overlay.classList.remove('open'));
+    if (cancelBtn) cancelBtn.addEventListener('click', () => overlay.classList.remove('open'));
+    if (overlay) overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.classList.remove('open');
+    });
+
+    if (saveBtn) saveBtn.addEventListener('click', saveNotesFromModal);
+}
+
+function openNotesEditor(id) {
+    const item = dbData.find(d => d.id == id);
+    if (!item) return;
+
+    notesEditingId = id;
+    const notes = item.notes || {};
+
+    document.getElementById('notesModalKeyword').innerHTML = `Keyword: <code>${escapeHtml(item.keyword)}</code> · ${escapeHtml(item.niche)} · ${escapeHtml(item.city || '')}`;
+    document.getElementById('notesModalS2').value = item.kd !== undefined ? item.kd : '';
+    document.getElementById('notesModalS3').value = notes.stage_3 || '';
+    document.getElementById('notesModalS4').value = notes.stage_4 || '';
+
+    document.getElementById('notesModalOverlay').classList.add('open');
+}
+
+async function saveNotesFromModal() {
+    if (!notesEditingId) return;
+
+    const s2 = document.getElementById('notesModalS2').value.trim();
+    const s3 = document.getElementById('notesModalS3').value.trim();
+    const s4 = document.getElementById('notesModalS4').value.trim();
+
+    // Validate KD number
+    const kdNum = parseInt(s2, 10);
+    if (s2 && (isNaN(kdNum) || kdNum < 0 || kdNum > 100)) {
+        showToast('KD must be a valid number between 0 and 100.', 'error');
+        return;
+    }
+
+    const notesObj = {};
+    if (s3) notesObj.stage_3 = s3;
+    if (s4) notesObj.stage_4 = s4;
+
+    const notesValue = Object.keys(notesObj).length > 0 ? notesObj : null;
+    const kdValue = s2 ? kdNum : 0;
+
+    // Save to Supabase
+    try {
+        const { error } = await adminClient
+            .from('niches')
+            .update({ notes: notesValue, kd: kdValue })
+            .eq('id', notesEditingId);
+
+        if (error) throw error;
+
+        // Update local data
+        const item = dbData.find(d => d.id == notesEditingId);
+        if (item) {
+            item.notes = notesValue;
+            item.kd = kdValue;
+        }
+
+        renderTable();
+        document.getElementById('notesModalOverlay').classList.remove('open');
+        showToast('Notes saved successfully!');
+    } catch (e) {
+        console.error('Failed to save notes:', e);
+        // Fallback: update local array and local storage cache
+        const item = dbData.find(d => d.id == notesEditingId);
+        if (item) {
+            item.notes = notesValue;
+            item.kd = kdValue;
+            const local = localStorage.getItem('rank_rent_niches');
+            if (local) {
+                try {
+                    const parsed = JSON.parse(local);
+                    const idx = parsed.findIndex(p => p.id == notesEditingId);
+                    if (idx !== -1) {
+                        parsed[idx].notes = notesValue;
+                        parsed[idx].kd = kdValue;
+                        localStorage.setItem('rank_rent_niches', JSON.stringify(parsed));
+                    }
+                } catch(err) {
+                    console.error("Local sync error:", err);
+                }
+            }
+        }
+        renderTable();
+        document.getElementById('notesModalOverlay').classList.remove('open');
+        showToast('Saved notes locally (offline fallback).');
+    }
+}
+
+// Initialize notes modal when DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    setupNotesModal();
+});
+
+// ─── Failed Niches Admin Logic ───
+
+async function fetchFailedNiches() {
+    // Show spinner in tableBody
+    const tbody = document.getElementById('tableBody');
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="loading-state" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                    <p style="margin-top: 1rem;">Loading failed niches...</p>
+                </td>
+            </tr>
+        `;
+    }
+
+    try {
+        const { data, error } = await adminClient
+            .from('failed_niches')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        failedDbData = data || [];
+        renderFailedTable();
+    } catch (error) {
+        console.warn("Error fetching failed niches, falling back to LocalStorage:", error);
+        const local = localStorage.getItem('rank_rent_failed_niches');
+        failedDbData = local ? JSON.parse(local) : [
+            {
+                id: 'mock-1',
+                keyword: 'pest control springfield',
+                niche: 'pest control',
+                city: 'Springfield',
+                state: 'IL',
+                created_by: 'worker1@rankrent.com',
+                created_at: new Date(Date.now() - 86400000).toISOString()
+            },
+            {
+                id: 'mock-2',
+                keyword: 'towing service dallas',
+                niche: 'towing service',
+                city: 'Dallas',
+                state: 'TX',
+                created_by: 'worker2@rankrent.com',
+                created_at: new Date(Date.now() - 172800000).toISOString()
+            }
+        ];
+        renderFailedTable();
+    }
+}
+
+function renderFailedTable() {
+    const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (failedDbData.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                    No failed niches found in the database.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    failedDbData.forEach(item => {
+        const tr = document.createElement('tr');
+        const dateStr = new Date(item.created_at).toLocaleDateString();
+
+        tr.innerHTML = `
+            <td class="checkbox-cell">
+                <input type="checkbox" class="row-checkbox" value="${item.id}">
+            </td>
+            <td style="font-weight: 600;">${escapeHtml(item.niche)}</td>
+            <td>${escapeHtml(item.city || '')}</td>
+            <td><code style="background: rgba(255,255,255,0.05); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(item.keyword)}</code></td>
+            <td><span class="status-badge" style="background: var(--glass-bg); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.75rem;">${item.state.toUpperCase()}</span></td>
+            <td style="font-size: 0.85rem; color: var(--text-secondary);">${escapeHtml(item.created_by || 'Unknown')}</td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">${dateStr}</td>
+            <td>
+                <button class="action-btn delete-btn" data-id="${item.id}" title="Delete Record">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Bind individual checkboxes for bulk delete selection
+    document.querySelectorAll('.row-checkbox').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                selectedIds.add(cb.value);
+            } else {
+                selectedIds.delete(cb.value);
+            }
+            updateBulkActionsBar();
+        });
+    });
+
+    // Bind individual delete button
+    tbody.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const button = e.currentTarget;
+            const id = button.getAttribute('data-id');
+            handleSingleDelete(id);
+        });
+    });
+}
+
+function renderTableHeader() {
+    const thead = document.querySelector('#dataTable thead');
+    if (!thead) return;
+
+    if (activeTab === 'active') {
+        thead.innerHTML = `
+            <tr>
+                <th class="checkbox-cell">
+                    <input type="checkbox" id="selectAllCheckbox">
+                </th>
+                <th>Niche</th>
+                <th>City</th>
+                <th>Keyword</th>
+                <th>KD</th>
+                <th>Volume</th>
+                <th>Notes</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+        `;
+    } else {
+        thead.innerHTML = `
+            <tr>
+                <th class="checkbox-cell">
+                    <input type="checkbox" id="selectAllCheckbox">
+                </th>
+                <th>Niche</th>
+                <th>City</th>
+                <th>Keyword</th>
+                <th>State</th>
+                <th>Added By</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+        `;
+    }
+
+    // Re-bind the selectAllCheckbox event listener
+    const selectAllCb = document.getElementById('selectAllCheckbox');
+    if (selectAllCb) {
+        selectAllCb.addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            if (e.target.checked) {
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    selectedIds.add(cb.value);
+                });
+            } else {
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                    selectedIds.delete(cb.value);
+                });
+            }
+            updateBulkActionsBar();
+        });
+    }
 }

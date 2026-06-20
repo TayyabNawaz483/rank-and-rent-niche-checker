@@ -19,11 +19,17 @@
             <span>RankRent<span style="color: var(--primary);">Evaluator</span></span>
         </a>
         <div class="nav-actions">
-            <a href="admin-login.html" class="btn btn-secondary" title="Admin Login" style="padding: 0.5rem; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">
-                <i class="fa-solid fa-lock"></i>
+            <a href="/failed-niches.html" class="btn btn-secondary" title="Failed Niches" style="margin-right: 0.5rem;">
+                <i class="fa-solid fa-circle-xmark"></i> Failed Niches
             </a>
-            <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Mode" style="padding: 0.5rem; width: 38px; height: 38px;">
+            <a href="/admin-dashboard" class="btn btn-secondary" title="Admin Dashboard" style="margin-right: 0.5rem;">
+                <i class="fa-solid fa-gauge-high"></i> Admin Dashboard
+            </a>
+            <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Mode" style="padding: 0.5rem; width: 38px; height: 38px; margin-right: 0.5rem;">
                 <i class="fa-solid fa-sun" id="themeIcon"></i>
+            </button>
+            <button class="btn btn-secondary" id="logoutBtn">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
             </button>
         </div>
     </nav>
@@ -38,35 +44,35 @@
                     <i class="fa-solid fa-folder-open fa-lg"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-label">Total Analysed</span>
+                    <span class="stat-label">Total Niches</span>
                     <span class="stat-value" id="statTotal">0</span>
                 </div>
             </div>
-            <div class="stat-card passed">
+            <div class="stat-card cities">
                 <div class="stat-icon-wrapper">
-                    <i class="fa-solid fa-circle-check fa-lg"></i>
+                    <i class="fa-solid fa-city fa-lg"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-label">Passed Niches</span>
-                    <span class="stat-value" id="statPassed">0</span>
+                    <span class="stat-label">Cities Covered</span>
+                    <span class="stat-value" id="statCities">0</span>
                 </div>
             </div>
-            <div class="stat-card failed">
+            <div class="stat-card states">
                 <div class="stat-icon-wrapper">
-                    <i class="fa-solid fa-circle-xmark fa-lg"></i>
+                    <i class="fa-solid fa-map-location-dot fa-lg"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-label">Failed Niches</span>
-                    <span class="stat-value" id="statFailed">0</span>
+                    <span class="stat-label">States Covered</span>
+                    <span class="stat-value" id="statStates">0</span>
                 </div>
             </div>
-            <div class="stat-card total" style="--primary: var(--secondary)">
-                <div class="stat-icon-wrapper" style="color: var(--secondary)">
-                    <i class="fa-solid fa-chart-pie fa-lg"></i>
+            <div class="stat-card volume">
+                <div class="stat-icon-wrapper">
+                    <i class="fa-solid fa-chart-line fa-lg"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-label">Pass Ratio</span>
-                    <span class="stat-value" id="statRatio">0%</span>
+                    <span class="stat-label">Total Volume</span>
+                    <span class="stat-value" id="statTotalVolume">0</span>
                 </div>
             </div>
         </section>
@@ -74,85 +80,65 @@
         <div class="dashboard-layout">
             <aside class="dashboard-sidebar">
                 <!-- Filter Controls -->
-                <section class="filter-bar">
+        <section class="filter-bar">
+            <!-- View By Toggle Switcher -->
             <div class="filter-group">
-                <label for="searchNiche">Search Keyword</label>
-                <input type="text" id="searchNiche" class="filter-input" placeholder="e.g. plumber, orlando...">
+                <label>View By</label>
+                <div class="view-by-toggle">
+                    <button type="button" class="view-btn active" id="viewBtnCities" data-view="cities">Cities</button>
+                    <button type="button" class="view-btn" id="viewBtnStates" data-view="states">States</button>
+                </div>
             </div>
+
+            <!-- Custom Niche Dropdown -->
             <div class="filter-group">
-                <label for="filterState">Select State</label>
-                <select id="filterState" class="filter-input">
-                    <option value="all">All States</option>
-                    <option value="al">AL - Alabama</option>
-                    <option value="ak">AK - Alaska</option>
-                    <option value="az">AZ - Arizona</option>
-                    <option value="ar">AR - Arkansas</option>
-                    <option value="ca">CA - California</option>
-                    <option value="co">CO - Colorado</option>
-                    <option value="ct">CT - Connecticut</option>
-                    <option value="de">DE - Delaware</option>
-                    <option value="fl">FL - Florida</option>
-                    <option value="ga">GA - Georgia</option>
-                    <option value="hi">HI - Hawaii</option>
-                    <option value="id">ID - Idaho</option>
-                    <option value="il">IL - Illinois</option>
-                    <option value="in">IN - Indiana</option>
-                    <option value="ia">IA - Iowa</option>
-                    <option value="ks">KS - Kansas</option>
-                    <option value="ky">KY - Kentucky</option>
-                    <option value="la">LA - Louisiana</option>
-                    <option value="me">ME - Maine</option>
-                    <option value="md">MD - Maryland</option>
-                    <option value="ma">MA - Massachusetts</option>
-                    <option value="mi">MI - Michigan</option>
-                    <option value="mn">MN - Minnesota</option>
-                    <option value="ms">MS - Mississippi</option>
-                    <option value="mo">MO - Missouri</option>
-                    <option value="mt">MT - Montana</option>
-                    <option value="ne">NE - Nebraska</option>
-                    <option value="nv">NV - Nevada</option>
-                    <option value="nh">NH - New Hampshire</option>
-                    <option value="nj">NJ - New Jersey</option>
-                    <option value="nm">NM - New Mexico</option>
-                    <option value="ny">NY - New York</option>
-                    <option value="nc">NC - North Carolina</option>
-                    <option value="nd">ND - North Dakota</option>
-                    <option value="oh">OH - Ohio</option>
-                    <option value="ok">OK - Oklahoma</option>
-                    <option value="or">OR - Oregon</option>
-                    <option value="pa">PA - Pennsylvania</option>
-                    <option value="ri">RI - Rhode Island</option>
-                    <option value="sc">SC - South Carolina</option>
-                    <option value="sd">SD - South Dakota</option>
-                    <option value="tn">TN - Tennessee</option>
-                    <option value="tx">TX - Texas</option>
-                    <option value="ut">UT - Utah</option>
-                    <option value="vt">VT - Vermont</option>
-                    <option value="va">VA - Virginia</option>
-                    <option value="wa">WA - Washington</option>
-                    <option value="wv">WV - West Virginia</option>
-                    <option value="wi">WI - Wisconsin</option>
-                    <option value="wy">WY - Wyoming</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label for="filterNiche">Select Niche</label>
-                <select id="filterNiche" class="filter-input">
+                <label for="filterNiche">Niche</label>
+                <select id="filterNiche" class="filter-input dropdown-select">
                     <option value="all">All Niches</option>
                 </select>
             </div>
+
+            <!-- Custom Location Group (State Dropdown + City Search stacked) -->
             <div class="filter-group">
+                <label>Location</label>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <select id="filterState" class="filter-input dropdown-select">
+                        <option value="all">All States</option>
+                        <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
+                        <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
+                        <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
+                        <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option>
+                        <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
+                        <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
+                        <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
+                        <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
+                        <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
+                        <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
+                        <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
+                        <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
+                        <option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option>
+                        <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option>
+                        <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
+                        <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
+                        <option value="WI">WI</option><option value="WY">WY</option>
+                    </select>
+                    <input type="text" id="searchNiche" class="filter-input search-city" placeholder="Find a city..." autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Keep legacy hidden filterCity element for Javascript event binding compatibility -->
+            <div class="filter-group" style="display: none !important;">
                 <label for="filterCity">Select City</label>
                 <select id="filterCity" class="filter-input">
                     <option value="all">All Cities</option>
                 </select>
             </div>
             
-            <div class="filter-group">
+            <div class="filter-group" style="display: none !important;">
                 <label for="filterZips">Min Zip Codes</label>
                 <input type="number" id="filterZips" class="filter-input" min="0" placeholder="e.g. 2">
             </div>
-            <div class="filter-group">
+            <div class="filter-group" style="display: none !important;">
                 <label>Filter By Status</label>
                 <div class="status-pill-container">
                     <button class="status-pill active" data-status="all">All</button>
@@ -168,7 +154,7 @@
                     </button>
                 </div>
             </div>
-            <div class="filter-group">
+            <div class="filter-group" style="display: none !important;">
                 <label>&nbsp;</label>
                 <button class="btn btn-secondary" id="toggleAdvancedFiltersBtn" style="width: 100%; height: 38px; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                     Advanced <i class="fa-solid fa-sliders"></i>
@@ -177,7 +163,7 @@
         </section>
 
         <!-- Advanced Filters Panel -->
-        <section class="advanced-filters-panel" id="advancedFiltersPanel" style="display: none; padding: 1.5rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 var(--radius-lg) var(--radius-lg); margin-top: -2rem; margin-bottom: 2rem; position: relative; z-index: 1;">
+        <section class="advanced-filters-panel" id="advancedFiltersPanel" style="display: none !important; padding: 1.5rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 var(--radius-lg) var(--radius-lg); margin-top: -2rem; margin-bottom: 2rem; position: relative; z-index: 1;">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
                 <div class="filter-group">
                     <label for="filterMaxKd">Max KD (&le;)</label>
@@ -232,17 +218,16 @@
             </aside>
 
             <div class="dashboard-main-content">
-                <!-- Main Cards Grid -->
-                <section class="niche-grid" id="nicheGrid">
-                    <!-- Cards will be dynamically inserted here by JavaScript -->
+                <!-- Main Niche Table -->
+                <div id="nicheGrid">
                     <div class="no-results">
                         <div class="no-results-icon">
                             <i class="fa-solid fa-database"></i>
                         </div>
                         <h3>No Data Available</h3>
-                        <p>Click "Add Niche Data" to evaluate your first Rank and Rent niche!</p>
+                        <p>Evaluate your first Rank and Rent niche in the Funnel pipeline to display it here!</p>
                     </div>
-                </section>
+                </div>
             </div>
         </div>
 
@@ -329,6 +314,7 @@
 
     <!-- Supabase Client Library CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js"></script>
+    <script src="/auth.js"></script>
+    <script src="/app.js"></script>
 </body>
 </html>
