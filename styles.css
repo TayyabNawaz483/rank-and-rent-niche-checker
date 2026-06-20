@@ -3,18 +3,18 @@
 
 :root {
     color-scheme: dark;
-    --bg-main: #09090b;
-    --bg-surface: #18181b;
-    --bg-surface-solid: #27272a;
-    --border-color: #3f3f46;
-    --border-color-hover: #52525b;
+    --bg-main: #0f172a;
+    --bg-surface: #1e293b;
+    --bg-surface-solid: #1e293b;
+    --border-color: #334155;
+    --border-color-hover: #475569;
     
     --primary: #3b82f6;
     --secondary: #10b981;
     
-    --success: #22c55e;
-    --success-bg: rgba(34, 197, 94, 0.15);
-    --success-border: rgba(34, 197, 94, 0.3);
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.15);
+    --success-border: rgba(16, 185, 129, 0.3);
     
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.15);
@@ -24,14 +24,14 @@
     --warning-bg: rgba(245, 158, 11, 0.15);
     
     --text-primary: #f8fafc;
-    --text-secondary: #a1a1aa;
-    --text-muted: #71717a;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
     
-    --nav-bg: rgba(24, 24, 27, 0.8);
-    --input-bg: rgba(24, 24, 27, 0.5);
+    --nav-bg: rgba(30, 41, 59, 0.95);
+    --input-bg: rgba(15, 23, 42, 0.5);
     --glass-bg: rgba(255, 255, 255, 0.03);
     --glass-hover: rgba(255, 255, 255, 0.08);
-    --overlay-bg: rgba(9, 9, 11, 0.85);
+    --overlay-bg: rgba(15, 23, 42, 0.85);
 
     --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -68,11 +68,26 @@
     --bg-surface-solid: #ffffff;
     --border-color: #e2e8f0;
     --border-color-hover: #cbd5e1;
+    
+    --primary: #1d4ed8;
+    --secondary: #059669;
+
+    --success: #059669;
+    --success-bg: rgba(5, 150, 105, 0.15);
+    --success-border: rgba(5, 150, 105, 0.3);
+    
+    --danger: #dc2626;
+    --danger-bg: rgba(220, 38, 38, 0.15);
+    --danger-border: rgba(220, 38, 38, 0.3);
+
+    --warning: #d97706;
+    --warning-bg: rgba(217, 119, 6, 0.15);
+
     --text-primary: #0f172a;
     --text-secondary: #475569;
     --text-muted: #64748b;
     
-    --nav-bg: rgba(255, 255, 255, 0.9);
+    --nav-bg: rgba(255, 255, 255, 0.95);
     --input-bg: #f1f5f9;
     --glass-bg: rgba(0, 0, 0, 0.03);
     --glass-hover: rgba(0, 0, 0, 0.06);
@@ -2030,25 +2045,25 @@ select.filter-input option:disabled,
 
 /* Stage-specific styling with left border accents and glows */
 .stage-info-card.s1 { 
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.03) 100%); 
+    background: rgba(59, 130, 246, 0.05);
     border: 1px solid rgba(59, 130, 246, 0.3); 
     border-left: 4px solid var(--stage-1);
     box-shadow: 0 4px 20px -2px rgba(59, 130, 246, 0.15);
 }
 .stage-info-card.s2 { 
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.03) 100%); 
+    background: rgba(245, 158, 11, 0.05);
     border: 1px solid rgba(245, 158, 11, 0.3); 
     border-left: 4px solid var(--stage-2);
     box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.15);
 }
 .stage-info-card.s3 { 
-    background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(249, 115, 22, 0.03) 100%); 
+    background: rgba(249, 115, 22, 0.05);
     border: 1px solid rgba(249, 115, 22, 0.3); 
     border-left: 4px solid var(--stage-3);
     box-shadow: 0 4px 20px -2px rgba(249, 115, 22, 0.15);
 }
 .stage-info-card.s4 { 
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.03) 100%); 
+    background: rgba(16, 185, 129, 0.05);
     border: 1px solid rgba(16, 185, 129, 0.3); 
     border-left: 4px solid var(--stage-4);
     box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.15);

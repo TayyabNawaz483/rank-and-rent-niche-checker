@@ -47,25 +47,25 @@
         <div class="pipeline-bar" id="pipelineBar">
             <div class="pipeline-stage s1 has-pending">
                 <div class="pipeline-stage-dot" id="pipelineDot1">0</div>
-                <span class="pipeline-stage-label">Raw Keywords</span>
+                <span class="pipeline-stage-label">Keyword Generation</span>
                 <span class="pipeline-stage-count" id="pipelineCount1">0 pending</span>
             </div>
             <div class="pipeline-connector"></div>
             <div class="pipeline-stage s2">
                 <div class="pipeline-stage-dot" id="pipelineDot2">0</div>
-                <span class="pipeline-stage-label">KD Check</span>
+                <span class="pipeline-stage-label">Keyword Difficulty</span>
                 <span class="pipeline-stage-count" id="pipelineCount2">0 pending</span>
             </div>
             <div class="pipeline-connector"></div>
             <div class="pipeline-stage s3">
                 <div class="pipeline-stage-dot" id="pipelineDot3">0</div>
-                <span class="pipeline-stage-label">GMB Check</span>
+                <span class="pipeline-stage-label">Google My Business</span>
                 <span class="pipeline-stage-count" id="pipelineCount3">0 pending</span>
             </div>
             <div class="pipeline-connector"></div>
             <div class="pipeline-stage s4">
                 <div class="pipeline-stage-dot" id="pipelineDot4">0</div>
-                <span class="pipeline-stage-label">SERP Done</span>
+                <span class="pipeline-stage-label">Search Engine Results</span>
                 <span class="pipeline-stage-count" id="pipelineCount4">0 pending</span>
             </div>
         </div>
@@ -74,22 +74,22 @@
         <div class="funnel-tabs" id="funnelTabs">
             <button class="funnel-tab s1 active" data-stage="1">
                 <span class="tab-dot"></span>
-                Stage 1 — Keywords
+                Keyword Generation
                 <span class="tab-count" id="tabCount1">0</span>
             </button>
             <button class="funnel-tab s2" data-stage="2">
                 <span class="tab-dot"></span>
-                Stage 2 — KD
+                Keyword Difficulty
                 <span class="tab-count" id="tabCount2">0</span>
             </button>
             <button class="funnel-tab s3" data-stage="3">
                 <span class="tab-dot"></span>
-                Stage 3 — GMB
+                Google My Business
                 <span class="tab-count" id="tabCount3">0</span>
             </button>
             <button class="funnel-tab s4" data-stage="4">
                 <span class="tab-dot"></span>
-                Stage 4 — SERP
+                Search Engine Results
                 <span class="tab-count" id="tabCount4">0</span>
             </button>
         </div>
@@ -179,7 +179,7 @@
                         <ul class="info-list">
                             <li><span class="step-num">1</span> Generate keywords with GPT/Gemini</li>
                             <li><span class="step-num">2</span> Check in Keywords Everywhere</li>
-                            <li><span class="step-num">3</span> Remove keywords with volume &lt; 50</li>
+                            <li><span class="step-num">3</span> Remove keywords with volume less than 50</li>
                             <li><span class="step-num">4</span> Copy & paste the remaining here</li>
                         </ul>
                     </div>
@@ -206,7 +206,7 @@
                 <div class="funnel-main">
                     <!-- Pending Groups -->
                     <div class="section-divider">
-                        <span class="section-divider-icon" style="color: var(--warning);">⏳</span>
+                        <span class="section-divider-icon" style="color: var(--warning);"><i class="fa-solid fa-hourglass-half"></i></span>
                         <span class="section-divider-text">Pending — Needs KD Check</span>
                         <div class="section-divider-line"></div>
                     </div>
@@ -220,7 +220,7 @@
 
                     <!-- Checked Groups -->
                     <div class="section-divider" style="margin-top: 2rem;">
-                        <span class="section-divider-icon" style="color: var(--success);">✅</span>
+                        <span class="section-divider-icon" style="color: var(--success);"><i class="fa-solid fa-circle-check"></i></span>
                         <span class="section-divider-text">Checked — Already Sent to Stage 3</span>
                         <div class="section-divider-line"></div>
                     </div>
@@ -231,9 +231,9 @@
                     <!-- Paste Box -->
                     <div class="paste-box-container">
                         <div class="paste-box-label">
-                            <i class="fa-solid fa-paste"></i> Paste Passing Keywords (KD ≤ 10)
+                            <i class="fa-solid fa-paste"></i> Paste Passing Keywords (KD less than or equal to 10)
                         </div>
-                        <textarea class="paste-textarea" id="stage2Textarea" placeholder="Paste keywords that passed KD check (one per line)&#10;&#10;Only paste keywords with KD ≤ 10&#10;Same format as copied above"></textarea>
+                        <textarea class="paste-textarea" id="stage2Textarea" placeholder="Paste keywords that passed KD check (one per line)&#10;&#10;Only paste keywords with KD less than or equal to 10&#10;Same format as copied above"></textarea>
                         <div class="paste-hint">
                             <i class="fa-solid fa-circle-info"></i>
                             Paste only keywords that passed. Non-matching keywords will be shown as warnings.
@@ -288,7 +288,7 @@
                         <ul class="info-list">
                             <li><span class="step-num">1</span> Copy keywords (100 at a time)</li>
                             <li><span class="step-num">2</span> Go to Moz, check KD</li>
-                            <li><span class="step-num">3</span> Only paste back keywords with KD ≤ 10</li>
+                            <li><span class="step-num">3</span> Only paste back keywords with KD less than or equal to 10</li>
                             <li><span class="step-num">4</span> Select the niche group & submit</li>
                         </ul>
                     </div>
@@ -303,7 +303,7 @@
             <div class="funnel-content-grid">
                 <div class="funnel-main">
                     <div class="section-divider">
-                        <span class="section-divider-icon" style="color: var(--stage-3);">⏳</span>
+                        <span class="section-divider-icon" style="color: var(--stage-3);"><i class="fa-solid fa-hourglass-half"></i></span>
                         <span class="section-divider-text">Pending — Needs GMB Check</span>
                         <div class="section-divider-line"></div>
                     </div>
@@ -316,7 +316,7 @@
                     </div>
 
                     <div class="section-divider" style="margin-top: 2rem;">
-                        <span class="section-divider-icon" style="color: var(--success);">✅</span>
+                        <span class="section-divider-icon" style="color: var(--success);"><i class="fa-solid fa-circle-check"></i></span>
                         <span class="section-divider-text">Checked — Already Sent to Stage 4</span>
                         <div class="section-divider-line"></div>
                     </div>
@@ -328,7 +328,7 @@
                         <div class="paste-box-label">
                             <i class="fa-solid fa-paste"></i> Paste Passing Keywords (GMB Criteria Met)
                         </div>
-                        <textarea class="paste-textarea" id="stage3Textarea" placeholder="Paste keywords that passed GMB criteria (one per line)&#10;&#10;Cities with 10-15+ GMBs AND all 3 reviews ≤ 100"></textarea>
+                        <textarea class="paste-textarea" id="stage3Textarea" placeholder="Paste keywords that passed GMB criteria (one per line)&#10;&#10;Cities with 10-15+ GMBs AND all 3 reviews less than or equal to 100"></textarea>
                         <div class="paste-hint">
                             <i class="fa-solid fa-circle-info"></i>
                             Only paste keywords from cities where GMB criteria are met.
@@ -386,7 +386,7 @@
                                     <div><span class="step-num">3</span> Only paste keywords where:</div>
                                     <ul class="info-sublist">
                                         <li>• 10-15+ GMBs in the city</li>
-                                        <li>• Top 3 reviews ≤ 100</li>
+                                        <li>• Top 3 reviews less than or equal to 100</li>
                                     </ul>
                                 </div>
                             </li>
@@ -404,7 +404,7 @@
             <div class="funnel-content-grid">
                 <div class="funnel-main">
                     <div class="section-divider">
-                        <span class="section-divider-icon" style="color: var(--stage-4);">⏳</span>
+                        <span class="section-divider-icon" style="color: var(--stage-4);"><i class="fa-solid fa-hourglass-half"></i></span>
                         <span class="section-divider-text">Pending — Needs SERP Analysis</span>
                         <div class="section-divider-line"></div>
                     </div>
@@ -417,7 +417,7 @@
                     </div>
 
                     <div class="section-divider" style="margin-top: 2rem;">
-                        <span class="section-divider-icon" style="color: var(--success);">✅</span>
+                        <span class="section-divider-icon" style="color: var(--success);"><i class="fa-solid fa-circle-check"></i></span>
                         <span class="section-divider-text">Completed — Saved to Main Dashboard</span>
                         <div class="section-divider-line"></div>
                     </div>
@@ -482,7 +482,7 @@
                         <ul class="info-list">
                             <li><span class="step-num">1</span> Copy keywords from pending groups</li>
                             <li><span class="step-num">2</span> Go to Moz for full SERP analysis</li>
-                            <li><span class="step-num">3</span> Check: DA&lt;10 ≥ 4, R&R site, directories, traffic</li>
+                            <li><span class="step-num">3</span> Check: DA less than 10 (4 or more), R&R site, directories, traffic</li>
                             <li><span class="step-num">4</span> Only paste passing keywords</li>
                             <li><span class="step-num">5</span> Finalize → saved to main dashboard as PASS</li>
                         </ul>

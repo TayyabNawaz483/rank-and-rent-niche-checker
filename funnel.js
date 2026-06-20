@@ -667,7 +667,7 @@
                     <div class="history-meta">${batch.rows.length} keywords · ${date}</div>
                 </div>
                 <span class="group-badge ${batch.status === 'checked' ? 'checked-badge' : 'pending-badge'}">
-                    ${batch.status === 'checked' ? '✓' : '⏳'}
+                    ${batch.status === 'checked' ? '✓' : '<i class="fa-solid fa-hourglass-half"></i>'}
                 </span>
             </div>`;
         });
