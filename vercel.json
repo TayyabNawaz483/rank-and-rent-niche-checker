@@ -1,0 +1,14 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/stage1", "destination": "/funnel.html" },
+    { "source": "/stage2", "destination": "/funnel.html" },
+    { "source": "/stage3", "destination": "/funnel.html" },
+    { "source": "/stage4", "destination": "/funnel.html" },
+    { "source": "/funnel-login", "destination": "/funnel-login.html" },
+    { "source": "/admin", "destination": "/admin-login.html" },
+    { "source": "/admin-dashboard", "destination": "/admin-dashboard.html" },
+    { "source": "/sheet", "destination": "/index.html" },
+    { "source": "/failed", "destination": "/failed-niches.html" }
+  ]
+}
