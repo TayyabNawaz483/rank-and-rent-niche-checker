@@ -92,19 +92,61 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // Auto-detection rules:
-        // Last word is city, preceding words are niche
-        const words = val.split(/\s+/);
-        if (words.length > 1) {
-            const city = words[words.length - 1];
-            const niche = words.slice(0, -1).join(' ');
-            
-            detectedNiche.value = niche.toLowerCase();
-            detectedCity.value = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
-        } else {
-            detectedNiche.value = val.toLowerCase();
-            detectedCity.value = '';
+        // Robust auto-detection logic
+        const lowerWords = words.map(w => w.toLowerCase());
+        const serviceIndicators = [
+            'repair', 'control', 'dentist', 'dentistry', 'plumber', 'plumbing', 
+            'roofing', 'roof', 'concrete', 'removal', 'towing', 'cleaning', 
+            'landscaping', 'service', 'services', 'contractors', 'contractor', 
+            'installation', 'care', 'electrician', 'painter', 'painting', 
+            'mover', 'movers', 'hvac', 'attorney', 'lawyer', 'tow', 'damage', 
+            'restoration', 'cleanup', 'detoxing'
+        ];
+        
+        const citySuffixes = ['falls', 'city', 'bay', 'rapids', 'beach', 'springs', 'valley', 'hills', 'heights', 'lake', 'junction', 'pines', 'forks', 'haven', 'wood', 'port'];
+        const cityPrefixes = ['sioux', 'rapid', 'green', 'las', 'vegas', 'san', 'los', 'new', 'santa', 'grand', 'fort', 'el', 'st', 'saint', 'mount', 'port', 'lake', 'palm', 'south', 'north', 'west', 'east', 'ann', 'baton', 'corpus'];
+
+        let nicheFound = '';
+        let cityFound = '';
+
+        // 1. Check if any service indicator is present in the middle
+        let splitDone = false;
+        for (let i = 0; i < words.length - 1; i++) {
+            if (serviceIndicators.includes(lowerWords[i])) {
+                nicheFound = words.slice(0, i + 1).join(' ');
+                cityFound = words.slice(i + 1).join(' ');
+                splitDone = true;
+                break;
+            }
         }
+
+        if (!splitDone && words.length >= 4) {
+            const last3Lower = lowerWords.slice(-3).join(' ');
+            if (last3Lower === 'salt lake city' || last3Lower === 'west palm beach') {
+                nicheFound = words.slice(0, -3).join(' ');
+                cityFound = words.slice(-3).join(' ');
+                splitDone = true;
+            }
+        }
+
+        if (!splitDone && words.length >= 3) {
+            const lastWord = lowerWords[words.length - 1];
+            const secondLastWord = lowerWords[words.length - 2];
+            if (citySuffixes.includes(lastWord) || cityPrefixes.includes(secondLastWord)) {
+                nicheFound = words.slice(0, -2).join(' ');
+                cityFound = words.slice(-2).join(' ');
+                splitDone = true;
+            }
+        }
+
+        if (!splitDone) {
+            nicheFound = words.slice(0, -1).join(' ');
+            cityFound = words.slice(-1).join(' ');
+        }
+
+        detectedNiche.value = nicheFound.toLowerCase();
+        // Capitalize city properly
+        detectedCity.value = cityFound.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     });
 
     // Form submit listener
