@@ -914,6 +914,144 @@
         });
     }
 
+    function showCustomConfirm(title, message) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'custom-confirm-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.75);
+                backdrop-filter: blur(8px);
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0;
+                transition: opacity 0.25s ease;
+            `;
+
+            const container = document.createElement('div');
+            container.className = 'custom-confirm-container';
+            container.style.cssText = `
+                background: var(--bg-surface-solid);
+                border: 1px solid var(--border-color);
+                border-radius: var(--radius-lg);
+                width: 90%;
+                max-width: 420px;
+                padding: 1.75rem;
+                box-shadow: var(--shadow-xl);
+                transform: translateY(20px);
+                transition: transform 0.25s ease;
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            `;
+
+            const header = document.createElement('div');
+            header.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+            `;
+
+            const icon = document.createElement('div');
+            icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            icon.style.cssText = `
+                width: 40px;
+                height: 40px;
+                background: var(--danger-bg);
+                color: var(--danger);
+                border: 1px solid var(--danger-border);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.15rem;
+                flex-shrink: 0;
+            `;
+
+            const titleEl = document.createElement('h3');
+            titleEl.textContent = title;
+            titleEl.style.cssText = `
+                font-size: 1.1rem;
+                font-weight: 700;
+                color: var(--text-primary);
+                margin: 0;
+            `;
+
+            header.appendChild(icon);
+            header.appendChild(titleEl);
+
+            const msgEl = document.createElement('p');
+            msgEl.textContent = message;
+            msgEl.style.cssText = `
+                font-size: 0.88rem;
+                color: var(--text-secondary);
+                line-height: 1.5;
+                margin: 0;
+            `;
+
+            const footer = document.createElement('div');
+            footer.style.cssText = `
+                display: flex;
+                justify-content: flex-end;
+                gap: 0.75rem;
+                margin-top: 0.5rem;
+            `;
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn btn-secondary';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.style.cssText = `
+                padding: 0.5rem 1.25rem;
+                font-size: 0.85rem;
+            `;
+
+            const confirmBtn = document.createElement('button');
+            confirmBtn.className = 'btn';
+            confirmBtn.textContent = 'Yes, Fail Group';
+            confirmBtn.style.cssText = `
+                background: var(--danger);
+                color: white;
+                border: 1px solid rgba(239, 68, 68, 0.2);
+                padding: 0.5rem 1.25rem;
+                font-size: 0.85rem;
+                font-weight: 600;
+            `;
+
+            footer.appendChild(cancelBtn);
+            footer.appendChild(confirmBtn);
+
+            container.appendChild(header);
+            container.appendChild(msgEl);
+            container.appendChild(footer);
+            overlay.appendChild(container);
+            document.body.appendChild(overlay);
+
+            // Trigger reflow & animate
+            requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            });
+
+            function closeConfirm(value) {
+                overlay.style.opacity = '0';
+                container.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    overlay.remove();
+                    resolve(value);
+                }, 250);
+            }
+
+            cancelBtn.addEventListener('click', () => closeConfirm(false));
+            confirmBtn.addEventListener('click', () => closeConfirm(true));
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeConfirm(false);
+            });
+        });
+    }
+
     async function failEntireGroup(batchId, stageNum) {
         const batchRows = allPipelineData.filter(r => r.batch_id === batchId);
         if (batchRows.length === 0) {
@@ -922,9 +1060,13 @@
         }
 
         const nicheName = batchRows[0].niche;
-        const confirmMsg = `Are you sure you want to fail the entire group "${nicheName}"?\n\nThis will mark all ${batchRows.length} keywords in this group as failed and remove them from the pending list.`;
         
-        if (!confirm(confirmMsg)) {
+        const confirmed = await showCustomConfirm(
+            `Fail "${nicheName}"?`, 
+            `Are you sure you want to fail the entire group "${nicheName}"? This will mark all ${batchRows.length} keywords in this group as failed and remove them from the pending list.`
+        );
+        
+        if (!confirmed) {
             return;
         }
 
