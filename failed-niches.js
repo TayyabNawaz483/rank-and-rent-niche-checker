@@ -165,6 +165,70 @@ async function fetchFailedNiches() {
 
         if (error) throw error;
         failedData = data || [];
+
+        // Self-healing database correction block for mismatched niche
+        const badRow = failedData.find(d => 
+            d.keyword && d.keyword.toLowerCase() === 'appliance repair sioux falls' && 
+            d.niche === 'appliance repair sioux'
+        );
+        if (badRow) {
+            console.log("Fixing incorrect failed niche in database...", badRow.id);
+            try {
+                await supabaseClient
+                    .from('failed_niches')
+                    .update({ niche: 'appliance repair', city: 'Sioux Falls' })
+                    .eq('id', badRow.id);
+                badRow.niche = 'appliance repair';
+                badRow.city = 'Sioux Falls';
+                console.log("Database successfully updated.");
+            } catch(e) {
+                console.error("Database update failed:", e);
+            }
+        }
+
+        // Correct in Supabase pipeline_keywords if any match exists
+        try {
+            await supabaseClient
+                .from('pipeline_keywords')
+                .update({ niche: 'appliance repair', city: 'Sioux Falls' })
+                .eq('keyword', 'appliance repair sioux falls')
+                .eq('niche', 'appliance repair sioux');
+        } catch(e) {}
+
+        // Correct in localStorage
+        try {
+            let localFailed = localStorage.getItem('rank_rent_failed_niches');
+            if (localFailed) {
+                let parsed = JSON.parse(localFailed);
+                let fixed = false;
+                parsed.forEach(item => {
+                    if (item.keyword && item.keyword.toLowerCase() === 'appliance repair sioux falls' && item.niche === 'appliance repair sioux') {
+                        item.niche = 'appliance repair';
+                        item.city = 'Sioux Falls';
+                        fixed = true;
+                    }
+                });
+                if (fixed) {
+                    localStorage.setItem('rank_rent_failed_niches', JSON.stringify(parsed));
+                }
+            }
+            let localPipeline = localStorage.getItem('rank_rent_pipeline');
+            if (localPipeline) {
+                let parsed = JSON.parse(localPipeline);
+                let fixed = false;
+                parsed.forEach(item => {
+                    if (item.keyword && item.keyword.toLowerCase() === 'appliance repair sioux falls' && item.niche === 'appliance repair sioux') {
+                        item.niche = 'appliance repair';
+                        item.city = 'Sioux Falls';
+                        fixed = true;
+                    }
+                });
+                if (fixed) {
+                    localStorage.setItem('rank_rent_pipeline', JSON.stringify(parsed));
+                }
+            }
+        } catch(e) {}
+
         populateFilters();
         renderTable();
     } catch (error) {
