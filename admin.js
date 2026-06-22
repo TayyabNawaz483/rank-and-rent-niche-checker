@@ -1043,7 +1043,15 @@ function renderNotesPills(item) {
         pills += `<div class="note-pill s2"><span class="note-stage-tag">S2:</span><span class="note-pill-text">${escapeHtml(notes.stage_2)}</span></div>`;
     }
     if (notes.stage_3) {
-        pills += `<div class="note-pill s3"><span class="note-stage-tag">S3:</span><span class="note-pill-text">${escapeHtml(notes.stage_3)}</span></div>`;
+        let s3Text = '';
+        if (typeof notes.stage_3 === 'object' && notes.stage_3 !== null) {
+            const revs = notes.stage_3.gmb_reviews || '—';
+            const count = notes.stage_3.gmb_count !== undefined && notes.stage_3.gmb_count !== null && notes.stage_3.gmb_count !== '' ? notes.stage_3.gmb_count : '—';
+            s3Text = `Reviews: ${revs} · GMBs: ${count}`;
+        } else {
+            s3Text = notes.stage_3;
+        }
+        pills += `<div class="note-pill s3"><span class="note-stage-tag">S3:</span><span class="note-pill-text">${escapeHtml(s3Text)}</span></div>`;
     }
     if (notes.stage_4) {
         pills += `<div class="note-pill s4"><span class="note-stage-tag">S4:</span><span class="note-pill-text">${escapeHtml(notes.stage_4)}</span></div>`;
@@ -1082,7 +1090,20 @@ function openNotesEditor(id) {
 
     document.getElementById('notesModalKeyword').innerHTML = `Keyword: <code>${escapeHtml(item.keyword)}</code> · ${escapeHtml(item.niche)} · ${escapeHtml(item.city || '')}`;
     document.getElementById('notesModalS2').value = item.kd !== undefined ? item.kd : '';
-    document.getElementById('notesModalS3').value = notes.stage_3 || '';
+
+    let reviewsVal = '';
+    let countVal = '';
+    if (notes.stage_3) {
+        if (typeof notes.stage_3 === 'object' && notes.stage_3 !== null) {
+            reviewsVal = notes.stage_3.gmb_reviews || '';
+            countVal = notes.stage_3.gmb_count !== undefined && notes.stage_3.gmb_count !== null ? notes.stage_3.gmb_count : '';
+        } else {
+            reviewsVal = notes.stage_3;
+        }
+    }
+    document.getElementById('notesModalS3Reviews').value = reviewsVal;
+    document.getElementById('notesModalS3Count').value = countVal;
+
     document.getElementById('notesModalS4').value = notes.stage_4 || '';
 
     document.getElementById('notesModalOverlay').classList.add('open');
@@ -1092,7 +1113,8 @@ async function saveNotesFromModal() {
     if (!notesEditingId) return;
 
     const s2 = document.getElementById('notesModalS2').value.trim();
-    const s3 = document.getElementById('notesModalS3').value.trim();
+    const reviewsVal = document.getElementById('notesModalS3Reviews').value.trim();
+    const countVal = document.getElementById('notesModalS3Count').value.trim();
     const s4 = document.getElementById('notesModalS4').value.trim();
 
     // Validate KD number
@@ -1102,8 +1124,23 @@ async function saveNotesFromModal() {
         return;
     }
 
+    // Validate GMB Count
+    const gmbCountNum = parseInt(countVal, 10);
+    if (countVal && (isNaN(gmbCountNum) || gmbCountNum < 0)) {
+        showToast('GMB Count must be a valid positive number.', 'error');
+        return;
+    }
+
     const notesObj = {};
-    if (s3) notesObj.stage_3 = s3;
+    
+    let s3Notes = null;
+    if (reviewsVal || countVal) {
+        s3Notes = {
+            gmb_reviews: reviewsVal,
+            gmb_count: countVal ? gmbCountNum : ''
+        };
+    }
+    if (s3Notes) notesObj.stage_3 = s3Notes;
     if (s4) notesObj.stage_4 = s4;
 
     const notesValue = Object.keys(notesObj).length > 0 ? notesObj : null;

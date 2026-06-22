@@ -783,8 +783,15 @@
         let kwListHtml = '';
         keywords.forEach((kw, i) => {
             const hasNote = kw.notes && kw.notes.trim().length > 0;
+            let noteDisplay = kw.notes || '';
+            if (hasNote && kw.notes.trim().startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(kw.notes);
+                    noteDisplay = `Reviews: ${parsed.gmb_reviews || '—'} | GMBs: ${parsed.gmb_count || '—'}`;
+                } catch (e) {}
+            }
             const noteIndicator = (isChecked && hasNote)
-                ? `<span style="color: #f59e0b; font-size: 0.75rem; margin-left: 0.5rem;" title="${escapeHtml(kw.notes)}">📝</span>`
+                ? `<span style="color: #f59e0b; font-size: 0.75rem; margin-left: 0.5rem;" title="${escapeHtml(noteDisplay)}">📝</span>`
                 : '';
 
             kwListHtml += `<div class="keyword-item">
@@ -1189,21 +1196,49 @@
 
         // Build preview table with note inputs
         matchCount.textContent = matched.length;
-        previewBody.innerHTML = matched.map((kw, i) => `
-            <tr>
-                <td>${i + 1}</td>
-                <td>${escapeHtml(kw.keyword)}</td>
-                <td>${escapeHtml(kw.city || '—')}</td>
-                <td>${kw.volume ? kw.volume.toLocaleString() : '—'}</td>
-                <td>
-                    <input type="${stageNum === 2 ? 'number' : 'text'}" class="preview-note-input" 
+        previewBody.innerHTML = matched.map((kw, i) => {
+            let noteInputHtml = '';
+            if (stageNum === 2) {
+                noteInputHtml = `
+                    <input type="number" class="preview-note-input" 
                            data-kw-id="${kw.id}" 
-                           placeholder="${stageNum === 2 ? 'KD (0-100)...' : 'Write note...'}"
-                           ${stageNum === 2 ? 'min="0" max="100"' : ''}
+                           placeholder="KD (0-100)..."
+                           min="0" max="100"
                            style="width: 100%; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem;">
-                </td>
-            </tr>
-        `).join('');
+                `;
+            } else if (stageNum === 3) {
+                noteInputHtml = `
+                    <div style="display: flex; gap: 0.5rem; width: 100%;">
+                        <input type="text" class="preview-gmb-reviews-input" 
+                               data-kw-id="${kw.id}" 
+                               placeholder="Reviews (e.g. 15,30,45)..."
+                               style="flex: 1.2; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem; min-width: 0;">
+                        <input type="number" class="preview-gmb-count-input" 
+                               data-kw-id="${kw.id}" 
+                               placeholder="GMB Count..."
+                               min="0"
+                               style="flex: 0.8; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem; min-width: 0;">
+                    </div>
+                `;
+            } else {
+                noteInputHtml = `
+                    <input type="text" class="preview-note-input" 
+                           data-kw-id="${kw.id}" 
+                           placeholder="Write note..."
+                           style="width: 100%; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem;">
+                `;
+            }
+
+            return `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${escapeHtml(kw.keyword)}</td>
+                    <td>${escapeHtml(kw.city || '—')}</td>
+                    <td>${kw.volume ? kw.volume.toLocaleString() : '—'}</td>
+                    <td>${noteInputHtml}</td>
+                </tr>
+            `;
+        }).join('');
 
         previewContainer.style.display = 'block';
         previewContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1228,31 +1263,59 @@
         submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
 
         // Collect notes from preview inputs
-        const noteInputs = previewContainer.querySelectorAll('.preview-note-input');
         const notesMap = {};
         let validationFailed = false;
-        noteInputs.forEach(input => {
-            const kwId = input.dataset.kwId;
-            const noteText = input.value.trim();
-            if (stageNum === 2) {
-                const num = parseInt(noteText, 10);
-                if (!noteText) {
-                    showToast('Keyword Difficulty (KD) is required for each keyword.', 'error');
-                    validationFailed = true;
-                    input.focus();
-                } else if (isNaN(num) || num < 0 || num > 100) {
-                    showToast('Keyword Difficulty (KD) must be a valid number between 0 and 100.', 'error');
-                    validationFailed = true;
-                    input.focus();
+
+        if (stageNum === 3) {
+            const rows = previewContainer.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                if (validationFailed) return;
+                const reviewsInput = row.querySelector('.preview-gmb-reviews-input');
+                const countInput = row.querySelector('.preview-gmb-count-input');
+                if (reviewsInput && countInput) {
+                    const kwId = reviewsInput.dataset.kwId;
+                    const reviewsText = reviewsInput.value.trim();
+                    const countText = countInput.value.trim();
+                    if (reviewsText || countText) {
+                        const countVal = countText ? parseInt(countText, 10) : '';
+                        if (countText && (isNaN(countVal) || countVal < 0)) {
+                            showToast('GMB Count must be a valid positive number.', 'error');
+                            validationFailed = true;
+                            countInput.focus();
+                            return;
+                        }
+                        notesMap[kwId] = JSON.stringify({
+                            gmb_reviews: reviewsText,
+                            gmb_count: countVal
+                        });
+                    }
+                }
+            });
+        } else {
+            const noteInputs = previewContainer.querySelectorAll('.preview-note-input');
+            noteInputs.forEach(input => {
+                const kwId = input.dataset.kwId;
+                const noteText = input.value.trim();
+                if (stageNum === 2) {
+                    const num = parseInt(noteText, 10);
+                    if (!noteText) {
+                        showToast('Keyword Difficulty (KD) is required for each keyword.', 'error');
+                        validationFailed = true;
+                        input.focus();
+                    } else if (isNaN(num) || num < 0 || num > 100) {
+                        showToast('Keyword Difficulty (KD) must be a valid number between 0 and 100.', 'error');
+                        validationFailed = true;
+                        input.focus();
+                    } else {
+                        notesMap[kwId] = noteText;
+                    }
                 } else {
-                    notesMap[kwId] = noteText;
+                    if (noteText) {
+                        notesMap[kwId] = noteText;
+                    }
                 }
-            } else {
-                if (noteText) {
-                    notesMap[kwId] = noteText;
-                }
-            }
-        });
+            });
+        }
 
         if (validationFailed) {
             submitBtn.disabled = false;
@@ -1412,7 +1475,15 @@
         // Build final JSON
         const result = {};
         if (notes.stage_2) result.stage_2 = notes.stage_2.text;
-        if (notes.stage_3) result.stage_3 = notes.stage_3.text;
+        if (notes.stage_3) {
+            let s3Val = notes.stage_3.text;
+            if (s3Val && s3Val.startsWith('{')) {
+                try {
+                    s3Val = JSON.parse(s3Val);
+                } catch (e) {}
+            }
+            result.stage_3 = s3Val;
+        }
         if (notes.stage_4) result.stage_4 = notes.stage_4.text;
 
         return Object.keys(result).length > 0 ? result : null;
