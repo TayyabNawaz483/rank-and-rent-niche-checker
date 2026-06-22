@@ -521,13 +521,68 @@
         window._stage1NewKeywords = newKeywords;
     }
 
+    function splitKeywordIntoNicheAndCity(keyword) {
+        const words = keyword.trim().split(/\s+/);
+        if (words.length <= 1) {
+            return { niche: keyword, city: '' };
+        }
+
+        const lowerWords = words.map(w => w.toLowerCase());
+        
+        // Common service/niche indicators - we split immediately after these if found
+        const serviceIndicators = [
+            'repair', 'control', 'dentist', 'dentistry', 'plumber', 'plumbing', 
+            'roofing', 'roof', 'concrete', 'removal', 'towing', 'cleaning', 
+            'landscaping', 'service', 'services', 'contractors', 'contractor', 
+            'installation', 'care', 'electrician', 'painter', 'painting', 
+            'mover', 'movers', 'hvac', 'attorney', 'lawyer', 'towing', 'tow',
+            'damage', 'restoration', 'cleanup', 'detoxing'
+        ];
+
+        // 1. Check if any service indicator is present in the middle
+        for (let i = 0; i < words.length - 1; i++) {
+            if (serviceIndicators.includes(lowerWords[i])) {
+                const niche = words.slice(0, i + 1).join(' ');
+                const city = words.slice(i + 1).join(' ');
+                return { niche, city };
+            }
+        }
+
+        // Common multi-word city suffixes and prefixes
+        const citySuffixes = ['falls', 'city', 'bay', 'rapids', 'beach', 'springs', 'valley', 'hills', 'heights', 'lake', 'junction', 'pines', 'forks', 'haven', 'wood', 'port'];
+        const cityPrefixes = ['sioux', 'rapid', 'green', 'las', 'vegas', 'san', 'los', 'new', 'santa', 'grand', 'fort', 'el', 'st', 'saint', 'mount', 'port', 'lake', 'palm', 'south', 'north', 'west', 'east', 'ann', 'baton', 'corpus'];
+
+        // 2. Check 3-word cities first
+        if (words.length >= 4) {
+            const last3Lower = lowerWords.slice(-3).join(' ');
+            if (last3Lower === 'salt lake city' || last3Lower === 'west palm beach') {
+                const niche = words.slice(0, -3).join(' ');
+                const city = words.slice(-3).join(' ');
+                return { niche, city };
+            }
+        }
+
+        // 3. Check 2-word cities
+        if (words.length >= 3) {
+            const lastWord = lowerWords[words.length - 1];
+            const secondLastWord = lowerWords[words.length - 2];
+            if (citySuffixes.includes(lastWord) || cityPrefixes.includes(secondLastWord)) {
+                const niche = words.slice(0, -2).join(' ');
+                const city = words.slice(-2).join(' ');
+                return { niche, city };
+            }
+        }
+
+        // 4. Default fallback: take everything except the last word as niche
+        const niche = words.slice(0, -1).join(' ');
+        const city = words.slice(-1).join(' ');
+        return { niche, city };
+    }
+
     function autoDetectNiche(keywords) {
         if (keywords.length === 0) return '';
         if (keywords.length === 1) {
-            // For a single keyword, take everything except the last word as niche
-            const words = keywords[0].split(' ');
-            if (words.length <= 1) return keywords[0];
-            return words.slice(0, -1).join(' ');
+            return splitKeywordIntoNicheAndCity(keywords[0]).niche;
         }
 
         // Find common prefix words
@@ -549,8 +604,7 @@
 
     function extractCity(keyword, niche) {
         if (!niche) {
-            const words = keyword.split(' ');
-            return words[words.length - 1];
+            return splitKeywordIntoNicheAndCity(keyword).city;
         }
         const lower = keyword.toLowerCase();
         const nicheL = niche.toLowerCase();
