@@ -3012,3 +3012,32 @@ select.filter-input option:disabled,
     }
 }
 
+/* Fail Group Button */
+.fail-group-btn {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-right: 0.5rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fail-group-btn:hover {
+    background: var(--danger-bg);
+    border-color: var(--danger-border);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.fail-group-btn:active {
+    transform: translateY(0);
+}
+
+

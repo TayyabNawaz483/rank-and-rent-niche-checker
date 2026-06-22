@@ -12,6 +12,7 @@
 
     let supabase = null;
     let currentUserRole = 'admin'; // default to admin for now — will be set by auth
+    let currentUserEmail = 'system@rankrent.com';
     let allPipelineData = [];
 
     // ─── Initialization ───
@@ -45,6 +46,7 @@
 
         // 1. Get role & assigned stage
         const user = session.user;
+        currentUserEmail = user.email || 'system@rankrent.com';
         const userRole = window.AuthService.getUserRole(user);
         
         let assignedStage = null;
@@ -655,8 +657,11 @@
             return;
         }
 
+        // Limit to 10 most recent submissions to prevent page bloat
+        const recentBatches = batches.slice(0, 10);
+
         let html = '';
-        batches.forEach(batch => {
+        recentBatches.forEach(batch => {
             const date = new Date(batch.rows[0].created_at).toLocaleDateString('en-US', {
                 month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
             });
@@ -712,6 +717,16 @@
         const pendingBatches = groupByBatch(pendingData);
         const checkedBatches = groupByBatch(checkedData);
 
+        // Update header dynamic pending groups counter
+        const pendingTitleEl = document.getElementById(`stage${stageNum}PendingTitle`);
+        if (pendingTitleEl) {
+            let stageText = '';
+            if (stageNum === 2) stageText = 'KD Check';
+            else if (stageNum === 3) stageText = 'GMB Check';
+            else if (stageNum === 4) stageText = 'SERP Analysis';
+            pendingTitleEl.textContent = `Pending — Needs ${stageText} (${pendingBatches.length} groups pending)`;
+        }
+
         // Render pending groups
         const pendingContainer = document.getElementById(`stage${stageNum}PendingGroups`);
         if (pendingContainer) {
@@ -722,8 +737,8 @@
                     <p>Keywords from Stage ${prevStage} will appear here</p>
                 </div>`;
             } else {
-                pendingContainer.innerHTML = pendingBatches.map(batch =>
-                    renderBatchGroup(batch, 'pending', stageNum)
+                pendingContainer.innerHTML = pendingBatches.map((batch, idx) =>
+                    renderBatchGroup(batch, 'pending', stageNum, idx + 1)
                 ).join('');
                 // Attach toggle and copy events
                 attachBatchEvents(pendingContainer);
@@ -757,7 +772,7 @@
         }
     }
 
-    function renderBatchGroup(batch, type, currentStage) {
+    function renderBatchGroup(batch, type, currentStage, index = null) {
         const isChecked = type === 'checked';
         const keywords = batch.rows;
         const date = new Date(keywords[0].created_at).toLocaleDateString('en-US', {
@@ -809,6 +824,14 @@
             </button>`;
         }
 
+        // Fail group button for pending groups
+        let failGroupBtn = '';
+        if (!isChecked) {
+            failGroupBtn = `<button class="fail-group-btn" data-batch-id="${batch.batchId}" data-stage="${currentStage}" title="Fail Entire Group">
+                <i class="fa-solid fa-circle-xmark"></i> Fail Group
+            </button>`;
+        }
+
         const checkedInfo = isChecked && batch.checkedAt
             ? `<span style="font-size: 0.75rem; color: var(--text-muted);">Checked ${new Date(batch.checkedAt).toLocaleDateString()}</span>`
             : '';
@@ -816,23 +839,26 @@
         const batchState = keywords[0].state || '';
         const stateTag = batchState ? `<span style="color: var(--primary); font-size: 0.8rem; font-weight: 600; background: var(--stage-1-bg); padding: 0.1rem 0.4rem; border-radius: 4px;">${escapeHtml(batchState)}</span>` : '';
 
+        const titlePrefix = index ? `Group #${index}: ` : '';
+
         return `<div class="batch-group ${type}">
             <div class="batch-group-header" data-toggle="batch-body-${batch.batchId}">
                 <div class="group-title">
                     <i class="fa-solid fa-folder${isChecked ? '-open' : ''}"></i>
-                    <span>${escapeHtml(batch.niche)}</span>
+                    <span>${titlePrefix}${escapeHtml(batch.niche)}</span>
                     ${stateTag}
                     <span style="color: var(--text-muted); font-weight: 400; font-size: 0.85rem;">(${keywords.length} keywords)</span>
                 </div>
                 <div class="group-meta">
                     ${checkedInfo}
                     <span class="group-badge ${isChecked ? 'checked-badge' : 'pending-badge'}">${isChecked ? 'CHECKED' : 'PENDING'}</span>
+                    ${failGroupBtn}
                     ${recheckHtml}
                     <span style="font-size: 0.75rem;">${date}</span>
                     <i class="fa-solid fa-chevron-down batch-group-chevron"></i>
                 </div>
             </div>
-            <div class="batch-group-body ${isChecked ? '' : 'open'}" id="batch-body-${batch.batchId}">
+            <div class="batch-group-body" id="batch-body-${batch.batchId}">
                 <div class="keyword-list-container">
                     <div class="keyword-list">${kwListHtml}</div>
                 </div>
@@ -845,7 +871,7 @@
         // Toggle expand/collapse
         container.querySelectorAll('.batch-group-header').forEach(header => {
             header.addEventListener('click', (e) => {
-                if (e.target.closest('.recheck-btn')) return; // Don't toggle on recheck click
+                if (e.target.closest('.recheck-btn') || e.target.closest('.fail-group-btn')) return; // Don't toggle on button clicks
                 const targetId = header.dataset.toggle;
                 const body = document.getElementById(targetId);
                 if (body) {
@@ -877,7 +903,63 @@
             });
         });
 
+        // Fail group buttons
+        container.querySelectorAll('.fail-group-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const batchId = btn.dataset.batchId;
+                const stage = parseInt(btn.dataset.stage);
+                await failEntireGroup(batchId, stage);
+            });
+        });
+    }
 
+    async function failEntireGroup(batchId, stageNum) {
+        const batchRows = allPipelineData.filter(r => r.batch_id === batchId);
+        if (batchRows.length === 0) {
+            showToast('No keywords found in this group', 'error');
+            return;
+        }
+
+        const nicheName = batchRows[0].niche;
+        const confirmMsg = `Are you sure you want to fail the entire group "${nicheName}"?\n\nThis will mark all ${batchRows.length} keywords in this group as failed and remove them from the pending list.`;
+        
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+
+        const now = new Date().toISOString();
+
+        // 1. Log all keywords as failed niches
+        const failedRows = batchRows.map(r => ({
+            keyword: r.keyword,
+            niche: r.niche,
+            city: r.city,
+            state: r.state || null,
+            volume: r.volume || 0,
+            failed_stage: stageNum,
+            fail_reason: `Entire group marked as failed at Stage ${stageNum} check`,
+            created_by: currentUserEmail,
+            created_at: now
+        }));
+
+        try {
+            await saveFailedNiches(failedRows);
+            
+            // 2. Mark the pipeline rows as failed
+            await updatePipelineRows(batchId, {
+                status: 'failed',
+                checked_at: now
+            });
+
+            showToast(`Marked entire group "${nicheName}" as failed`, 'success');
+        } catch (err) {
+            console.error('Error failing entire group:', err);
+            showToast('Failed to mark group as failed', 'error');
+        }
+
+        // 3. Update the view
+        await loadAllPipelineData();
     }
 
     function copyBatchKeywords(batchId, start, end, btnEl) {
