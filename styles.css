@@ -51,14 +51,17 @@
     --stage-2: #f59e0b;
     --stage-3: #f97316;
     --stage-4: #10b981;
+    --stage-5: #06b6d4;
     --stage-1-bg: rgba(59, 130, 246, 0.15);
     --stage-2-bg: rgba(245, 158, 11, 0.15);
     --stage-3-bg: rgba(249, 115, 22, 0.15);
     --stage-4-bg: rgba(16, 185, 129, 0.15);
+    --stage-5-bg: rgba(6, 182, 212, 0.15);
     --stage-1-glow: rgba(59, 130, 246, 0.25);
     --stage-2-glow: rgba(245, 158, 11, 0.25);
     --stage-3-glow: rgba(249, 115, 22, 0.25);
     --stage-4-glow: rgba(16, 185, 129, 0.25);
+    --stage-5-glow: rgba(6, 182, 212, 0.25);
 }
 
 [data-theme="light"] {
@@ -1378,6 +1381,11 @@ select.filter-input option:disabled,
     border: 1.5px solid rgba(16, 185, 129, 0.35);
     color: var(--stage-4);
 }
+.pipeline-stage.s5 .pipeline-stage-dot {
+    background: var(--stage-5-bg);
+    border: 1.5px solid rgba(6, 182, 212, 0.35);
+    color: var(--stage-5);
+}
 
 .pipeline-stage.has-pending .pipeline-stage-dot::after {
     content: '';
@@ -1490,11 +1498,14 @@ select.filter-input option:disabled,
 .funnel-tab.active.s3 .tab-count { background: rgba(255,255,255,0.2); border-color: transparent; }
 .funnel-tab.active.s4 { background: var(--stage-4); }
 .funnel-tab.active.s4 .tab-count { background: rgba(255,255,255,0.2); border-color: transparent; }
+.funnel-tab.active.s5 { background: var(--stage-5); }
+.funnel-tab.active.s5 .tab-count { background: rgba(255,255,255,0.2); border-color: transparent; }
 
 .s1 .tab-dot { background: var(--stage-1); }
 .s2 .tab-dot { background: var(--stage-2); }
 .s3 .tab-dot { background: var(--stage-3); }
 .s4 .tab-dot { background: var(--stage-4); }
+.s5 .tab-dot { background: var(--stage-5); }
 
 /* Tab Content Panels */
 .funnel-panel {
@@ -2588,6 +2599,11 @@ select.filter-input option:disabled,
     background: rgba(139, 92, 246, 0.12);
     color: #a78bfa;
     border: 1px solid rgba(139, 92, 246, 0.2);
+}
+.note-pill.s5 {
+    background: rgba(6, 182, 212, 0.12);
+    color: #22d3ee;
+    border: 1px solid rgba(6, 182, 212, 0.2);
 }
 .notes-empty {
     color: var(--text-muted);

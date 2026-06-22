@@ -3,6 +3,7 @@
 /stage2 /funnel.html 200
 /stage3 /funnel.html 200
 /stage4 /funnel.html 200
+/stage5 /funnel.html 200
 /funnel-login /funnel-login.html 200
 /admin /admin-login.html 200
 /admin-dashboard /admin-dashboard.html 200

@@ -65,8 +65,14 @@
             <div class="pipeline-connector"></div>
             <div class="pipeline-stage s4">
                 <div class="pipeline-stage-dot" id="pipelineDot4">0</div>
-                <span class="pipeline-stage-label">Search Engine Results</span>
+                <span class="pipeline-stage-label">DA & Traffic Check</span>
                 <span class="pipeline-stage-count" id="pipelineCount4">0 pending</span>
+            </div>
+            <div class="pipeline-connector"></div>
+            <div class="pipeline-stage s5">
+                <div class="pipeline-stage-dot" id="pipelineDot5">0</div>
+                <span class="pipeline-stage-label">Directories & R&R Check</span>
+                <span class="pipeline-stage-count" id="pipelineCount5">0 pending</span>
             </div>
         </div>
 
@@ -89,8 +95,13 @@
             </button>
             <button class="funnel-tab s4" data-stage="4">
                 <span class="tab-dot"></span>
-                Search Engine Results
+                DA & Traffic Check
                 <span class="tab-count" id="tabCount4">0</span>
+            </button>
+            <button class="funnel-tab s5" data-stage="5">
+                <span class="tab-dot"></span>
+                Directories & R&R Check
+                <span class="tab-count" id="tabCount5">0</span>
             </button>
         </div>
 
@@ -400,14 +411,14 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- STAGE 4 PANEL — SERP Analyzer                 -->
+        <!-- STAGE 4 PANEL — DA & Traffic Check           -->
         <!-- ============================================ -->
         <div class="funnel-panel" id="panel4" data-stage="4">
             <div class="funnel-content-grid">
                 <div class="funnel-main">
                     <div class="section-divider">
                         <span class="section-divider-icon" style="color: var(--stage-4);"><i class="fa-solid fa-hourglass-half"></i></span>
-                        <span class="section-divider-text" id="stage4PendingTitle">Pending — Needs SERP Analysis</span>
+                        <span class="section-divider-text" id="stage4PendingTitle">Pending — Needs DA & Traffic Check</span>
                         <div class="section-divider-line"></div>
                     </div>
                     <div id="stage4PendingGroups">
@@ -420,7 +431,7 @@
 
                     <div class="section-divider" style="margin-top: 2rem;">
                         <span class="section-divider-icon" style="color: var(--success);"><i class="fa-solid fa-circle-check"></i></span>
-                        <span class="section-divider-text">Completed — Saved to Main Dashboard</span>
+                        <span class="section-divider-text">Completed — Sent to Stage 5</span>
                         <div class="section-divider-line"></div>
                     </div>
                     <div id="stage4CheckedGroups">
@@ -429,12 +440,12 @@
 
                     <div class="paste-box-container">
                         <div class="paste-box-label">
-                            <i class="fa-solid fa-trophy" style="color: var(--stage-4);"></i> Paste Final Passing Keywords
+                            <i class="fa-solid fa-paper-plane" style="color: var(--stage-4);"></i> Paste DA & Traffic Passing Keywords
                         </div>
-                        <textarea class="paste-textarea" id="stage4Textarea" placeholder="Paste keywords that passed ALL SERP criteria (one per line)&#10;&#10;• Low DA sites (DA<10) ≥ 4&#10;• R&R/EMD site exists&#10;• Directory in SERP&#10;• Good traffic distribution"></textarea>
+                        <textarea class="paste-textarea" id="stage4Textarea" placeholder="Paste keywords that passed DA & Traffic check (one per line)&#10;&#10;• Low DA sites (DA<10) ≥ 4&#10;• Good traffic distribution"></textarea>
                         <div class="paste-hint">
                             <i class="fa-solid fa-circle-info"></i>
-                            These keywords will be saved to the main dashboard as PASS.
+                            These keywords will be sent to Stage 5.
                         </div>
                         <div class="paste-controls">
                             <div class="form-group">
@@ -462,14 +473,14 @@
                                             <th>Keyword</th>
                                             <th>City</th>
                                             <th>Volume</th>
-                                            <th>Note</th>
+                                            <th style="width: 350px;">Check notes</th>
                                         </tr>
                                     </thead>
                                     <tbody id="stage4PreviewBody"></tbody>
                                 </table>
                             </div>
                             <button class="paste-submit-btn finalize" id="stage4SubmitBtn" style="margin-top: 1rem;">
-                                <i class="fa-solid fa-trophy"></i> Finalize &amp; Save to Main Dashboard
+                                <i class="fa-solid fa-paper-plane"></i> Submit &amp; Send to Stage 5
                             </button>
                         </div>
                     </div>
@@ -483,8 +494,102 @@
                         </div>
                         <ul class="info-list">
                             <li><span class="step-num">1</span> Copy keywords from pending groups</li>
-                            <li><span class="step-num">2</span> Go to Moz for full SERP analysis</li>
-                            <li><span class="step-num">3</span> Check: DA less than 10 (4 or more), R&R site, directories, traffic</li>
+                            <li><span class="step-num">2</span> Go to Moz for SERP DA check</li>
+                            <li><span class="step-num">3</span> Check: DA less than 10 (4 or more)</li>
+                            <li><span class="step-num">4</span> Check first and last website traffic</li>
+                            <li><span class="step-num">5</span> Paste passing keywords and submit to Stage 5</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- STAGE 5 PANEL — Directories & R&R Check      -->
+        <!-- ============================================ -->
+        <div class="funnel-panel" id="panel5" data-stage="5">
+            <div class="funnel-content-grid">
+                <div class="funnel-main">
+                    <div class="section-divider">
+                        <span class="section-divider-icon" style="color: var(--stage-5);"><i class="fa-solid fa-hourglass-half"></i></span>
+                        <span class="section-divider-text" id="stage5PendingTitle">Pending — Needs Directories & R&R Check</span>
+                        <div class="section-divider-line"></div>
+                    </div>
+                    <div id="stage5PendingGroups">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-hourglass-start"></i>
+                            <h3>No keywords waiting</h3>
+                            <p>Keywords from Stage 4 will appear here</p>
+                        </div>
+                    </div>
+
+                    <div class="section-divider" style="margin-top: 2rem;">
+                        <span class="section-divider-icon" style="color: var(--success);"><i class="fa-solid fa-circle-check"></i></span>
+                        <span class="section-divider-text">Completed — Saved to Main Dashboard</span>
+                        <div class="section-divider-line"></div>
+                    </div>
+                    <div id="stage5CheckedGroups">
+                        <p style="font-size: 0.8rem; color: var(--text-muted); padding: 0.5rem 0;">No completed groups yet</p>
+                    </div>
+
+                    <div class="paste-box-container">
+                        <div class="paste-box-label">
+                            <i class="fa-solid fa-trophy" style="color: var(--stage-5);"></i> Paste Final Passing Keywords
+                        </div>
+                        <textarea class="paste-textarea" id="stage5Textarea" placeholder="Paste keywords that passed Directories & R&R check (one per line)&#10;&#10;• Rank & Rent/EMD site exists&#10;• Directories in SERP"></textarea>
+                        <div class="paste-hint">
+                            <i class="fa-solid fa-circle-info"></i>
+                            These keywords will be saved to the main dashboard as PASS.
+                        </div>
+                        <div class="paste-controls">
+                            <div class="form-group">
+                                <label for="stage5GroupSelect">This belongs to</label>
+                                <select id="stage5GroupSelect" class="form-input">
+                                    <option value="" disabled selected>Select niche group</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-secondary" id="stage5PreviewBtn" style="white-space: nowrap;">
+                                <i class="fa-solid fa-eye"></i> Preview
+                            </button>
+                        </div>
+                        <div id="stage5MatchWarning"></div>
+
+                        <div class="preview-container" id="stage5Preview" style="display:none;">
+                            <div class="preview-stats">
+                                <span>Matched: <strong id="stage5MatchCount">0</strong></span>
+                                <span style="color: var(--text-muted); font-size: 0.8rem;">📝 Add notes before submitting</span>
+                            </div>
+                            <div class="preview-table-wrap" style="margin-top: 0.5rem;">
+                                <table class="preview-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Keyword</th>
+                                            <th>City</th>
+                                            <th>Volume</th>
+                                            <th style="width: 350px;">Check notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stage5PreviewBody"></tbody>
+                                </table>
+                            </div>
+                            <button class="paste-submit-btn finalize" id="stage5SubmitBtn" style="margin-top: 1rem;">
+                                <i class="fa-solid fa-trophy"></i> Finalize &amp; Save to Main Dashboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="funnel-sidebar">
+                    <div class="stage-info-card s5">
+                        <div class="card-header">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>What You Need to Check</span>
+                        </div>
+                        <ul class="info-list">
+                            <li><span class="step-num">1</span> Copy keywords from pending groups</li>
+                            <li><span class="step-num">2</span> Check directories count in SERP</li>
+                            <li><span class="step-num">3</span> Check Rank & Rent sites presence</li>
                             <li><span class="step-num">4</span> Only paste passing keywords</li>
                             <li><span class="step-num">5</span> Finalize → saved to main dashboard as PASS</li>
                         </ul>

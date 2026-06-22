@@ -72,6 +72,7 @@ function getUserRole(user) {
         if (sStr === '2' || sStr === 'stage2' || sStr === 'stage_2') return 'stage_2';
         if (sStr === '3' || sStr === 'stage3' || sStr === 'stage_3') return 'stage_3';
         if (sStr === '4' || sStr === 'stage4' || sStr === 'stage_4') return 'stage_4';
+        if (sStr === '5' || sStr === 'stage5' || sStr === 'stage_5') return 'stage_5';
     }
     
     // Fallback: Check email prefix patterns
@@ -80,6 +81,7 @@ function getUserRole(user) {
     if (email.includes('stage2') || email.includes('worker2')) return 'stage_2';
     if (email.includes('stage3') || email.includes('worker3')) return 'stage_3';
     if (email.includes('stage4') || email.includes('worker4')) return 'stage_4';
+    if (email.includes('stage5') || email.includes('worker5')) return 'stage_5';
     
     return 'stage_1';
 }

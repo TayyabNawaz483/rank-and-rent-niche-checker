@@ -1054,7 +1054,26 @@ function renderNotesPills(item) {
         pills += `<div class="note-pill s3"><span class="note-stage-tag">S3:</span><span class="note-pill-text">${escapeHtml(s3Text)}</span></div>`;
     }
     if (notes.stage_4) {
-        pills += `<div class="note-pill s4"><span class="note-stage-tag">S4:</span><span class="note-pill-text">${escapeHtml(notes.stage_4)}</span></div>`;
+        let s4Text = '';
+        if (typeof notes.stage_4 === 'object' && notes.stage_4 !== null) {
+            const lowDa = notes.stage_4.low_da || '—';
+            const traffic = notes.stage_4.traffic || '—';
+            s4Text = `Low DA: ${lowDa} · Traffic: ${traffic}`;
+        } else {
+            s4Text = notes.stage_4;
+        }
+        pills += `<div class="note-pill s4"><span class="note-stage-tag">S4:</span><span class="note-pill-text">${escapeHtml(s4Text)}</span></div>`;
+    }
+    if (notes.stage_5) {
+        let s5Text = '';
+        if (typeof notes.stage_5 === 'object' && notes.stage_5 !== null) {
+            const dirs = notes.stage_5.directories || '—';
+            const rr = notes.stage_5.rr_sites || '—';
+            s5Text = `Dirs: ${dirs} · R&R: ${rr}`;
+        } else {
+            s5Text = notes.stage_5;
+        }
+        pills += `<div class="note-pill s5"><span class="note-stage-tag">S5:</span><span class="note-pill-text">${escapeHtml(s5Text)}</span></div>`;
     }
 
     return `<div class="notes-pills" data-id="${item.id}">
@@ -1079,6 +1098,30 @@ function setupNotesModal() {
     });
 
     if (saveBtn) saveBtn.addEventListener('click', saveNotesFromModal);
+
+    // Setup Enter key navigation for all inputs/textareas inside the modal
+    const modal = document.querySelector('.notes-modal');
+    if (modal) {
+        const modalInputs = Array.from(modal.querySelectorAll('input, textarea'));
+        modalInputs.forEach((input, index) => {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    if (input.tagName === 'TEXTAREA' && e.shiftKey) {
+                        return; // allow default newline behavior
+                    }
+                    e.preventDefault();
+                    const nextInput = modalInputs[index + 1];
+                    if (nextInput) {
+                        nextInput.focus();
+                        if (typeof nextInput.select === 'function') nextInput.select();
+                    } else {
+                        const modalSaveBtn = document.getElementById('notesModalSave');
+                        if (modalSaveBtn) modalSaveBtn.click();
+                    }
+                }
+            });
+        });
+    }
 }
 
 function openNotesEditor(id) {
@@ -1104,7 +1147,31 @@ function openNotesEditor(id) {
     document.getElementById('notesModalS3Reviews').value = reviewsVal;
     document.getElementById('notesModalS3Count').value = countVal;
 
-    document.getElementById('notesModalS4').value = notes.stage_4 || '';
+    let lowDaVal = '';
+    let trafficVal = '';
+    if (notes.stage_4) {
+        if (typeof notes.stage_4 === 'object' && notes.stage_4 !== null) {
+            lowDaVal = notes.stage_4.low_da || '';
+            trafficVal = notes.stage_4.traffic || '';
+        } else {
+            lowDaVal = notes.stage_4;
+        }
+    }
+    document.getElementById('notesModalS4LowDa').value = lowDaVal;
+    document.getElementById('notesModalS4Traffic').value = trafficVal;
+
+    let dirsVal = '';
+    let rrVal = '';
+    if (notes.stage_5) {
+        if (typeof notes.stage_5 === 'object' && notes.stage_5 !== null) {
+            dirsVal = notes.stage_5.directories || '';
+            rrVal = notes.stage_5.rr_sites || '';
+        } else {
+            dirsVal = notes.stage_5;
+        }
+    }
+    document.getElementById('notesModalS5Directories').value = dirsVal;
+    document.getElementById('notesModalS5RRSites').value = rrVal;
 
     document.getElementById('notesModalOverlay').classList.add('open');
 }
@@ -1115,7 +1182,10 @@ async function saveNotesFromModal() {
     const s2 = document.getElementById('notesModalS2').value.trim();
     const reviewsVal = document.getElementById('notesModalS3Reviews').value.trim();
     const countVal = document.getElementById('notesModalS3Count').value.trim();
-    const s4 = document.getElementById('notesModalS4').value.trim();
+    const lowDaVal = document.getElementById('notesModalS4LowDa').value.trim();
+    const trafficVal = document.getElementById('notesModalS4Traffic').value.trim();
+    const dirsVal = document.getElementById('notesModalS5Directories').value.trim();
+    const rrVal = document.getElementById('notesModalS5RRSites').value.trim();
 
     // Validate KD number
     const kdNum = parseInt(s2, 10);
@@ -1141,7 +1211,24 @@ async function saveNotesFromModal() {
         };
     }
     if (s3Notes) notesObj.stage_3 = s3Notes;
-    if (s4) notesObj.stage_4 = s4;
+
+    let s4Notes = null;
+    if (lowDaVal || trafficVal) {
+        s4Notes = {
+            low_da: lowDaVal,
+            traffic: trafficVal
+        };
+    }
+    if (s4Notes) notesObj.stage_4 = s4Notes;
+
+    let s5Notes = null;
+    if (dirsVal || rrVal) {
+        s5Notes = {
+            directories: dirsVal,
+            rr_sites: rrVal
+        };
+    }
+    if (s5Notes) notesObj.stage_5 = s5Notes;
 
     const notesValue = Object.keys(notesObj).length > 0 ? notesObj : null;
     const kdValue = s2 ? kdNum : 0;

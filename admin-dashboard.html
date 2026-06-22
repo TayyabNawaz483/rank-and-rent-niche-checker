@@ -208,8 +208,30 @@
                     </div>
                 </div>
                 <div class="notes-stage-group">
-                    <label class="notes-stage-label s4"><span class="stage-dot"></span> Search Engine Results</label>
-                    <textarea id="notesModalS4" placeholder="No Search Engine Results note..."></textarea>
+                    <label class="notes-stage-label s4"><span class="stage-dot"></span> DA &amp; Traffic Check</label>
+                    <div class="notes-gmb-split" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Low DA Sites (DA &lt; 10)</label>
+                            <input type="text" id="notesModalS4LowDa" placeholder="e.g. 4 sites" style="width: 100%; padding: 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.85rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">First/Last Website Traffic</label>
+                            <input type="text" id="notesModalS4Traffic" placeholder="e.g. 500-10" style="width: 100%; padding: 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.85rem;">
+                        </div>
+                    </div>
+                </div>
+                <div class="notes-stage-group">
+                    <label class="notes-stage-label s5" style="color: var(--stage-5);"><span class="stage-dot" style="background-color: var(--stage-5);"></span> Directories &amp; R&R Check</label>
+                    <div class="notes-gmb-split" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Directories Found</label>
+                            <input type="text" id="notesModalS5Directories" placeholder="e.g. 3 directories" style="width: 100%; padding: 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.85rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Rank &amp; Rent Sites</label>
+                            <input type="text" id="notesModalS5RRSites" placeholder="e.g. 2 sites" style="width: 100%; padding: 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.85rem;">
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="notes-modal-footer">

@@ -54,8 +54,9 @@
         else if (userRole === 'stage_2') assignedStage = 2;
         else if (userRole === 'stage_3') assignedStage = 3;
         else if (userRole === 'stage_4') assignedStage = 4;
+        else if (userRole === 'stage_5') assignedStage = 5;
         else if (userRole === 'admin') assignedStage = 'admin';
-
+ 
         // 2. Get requested stage from URL path
         const path = window.location.pathname;
         let requestedStage = null;
@@ -63,7 +64,8 @@
         else if (path.includes('/stage2') || path.endsWith('stage2')) requestedStage = 2;
         else if (path.includes('/stage3') || path.endsWith('stage3')) requestedStage = 3;
         else if (path.includes('/stage4') || path.endsWith('stage4')) requestedStage = 4;
-
+        else if (path.includes('/stage5') || path.endsWith('stage5')) requestedStage = 5;
+ 
         // 3. Verify access and redirect if necessary
         if (assignedStage !== 'admin') {
             // Workers cannot access main /funnel page or wrong stage page
@@ -72,9 +74,9 @@
                 return;
             }
         }
-
+ 
         initSupabase();
-
+ 
         // 4. Update Navbar User Profile Badge
         const emailSpan = document.getElementById('userBadgeEmail');
         const roleSpan = document.getElementById('userBadgeRole');
@@ -86,7 +88,7 @@
                 roleSpan.style.background = 'var(--primary)';
                 roleSpan.style.borderColor = 'transparent';
                 roleSpan.style.color = 'white';
-
+ 
                 const adminDashboardBtn = document.getElementById('adminDashboardBtn');
                 if (adminDashboardBtn) adminDashboardBtn.style.display = 'inline-block';
             } else {
@@ -95,17 +97,18 @@
                 if (assignedStage === 2) stageColor = 'var(--stage-2)';
                 else if (assignedStage === 3) stageColor = 'var(--stage-3)';
                 else if (assignedStage === 4) stageColor = 'var(--stage-4)';
+                else if (assignedStage === 5) stageColor = 'var(--stage-5)';
                 roleSpan.style.background = stageColor;
                 roleSpan.style.borderColor = 'transparent';
                 roleSpan.style.color = 'black';
             }
             badgeContainer.style.display = 'flex';
         }
-
+ 
         // 5. Apply DOM Isolation and layout updates
         if (assignedStage !== 'admin') {
             // Remove other stage panels and tabs
-            for (let i = 1; i <= 4; i++) {
+            for (let i = 1; i <= 5; i++) {
                 if (i !== assignedStage) {
                     const p = document.getElementById(`panel${i}`);
                     if (p) p.remove();
@@ -113,20 +116,20 @@
                     if (t) t.remove();
                 }
             }
-
+ 
             // Hide overall tabs bar and pipeline bar
             const tabsBar = document.getElementById('funnelTabs');
             if (tabsBar) tabsBar.style.display = 'none';
             const pipelineBar = document.getElementById('pipelineBar');
             if (pipelineBar) pipelineBar.style.display = 'none';
-
+ 
             // Show worker header banner
             const banner = document.getElementById('workerHeaderBanner');
             const icon = document.getElementById('workerHeaderIcon');
             const title = document.getElementById('workerHeaderTitle');
             const subtitle = document.getElementById('workerHeaderSubtitle');
             const meta = document.getElementById('workerHeaderMeta');
-
+ 
             if (banner && icon && title && subtitle && meta) {
                 let color = 'var(--stage-1)';
                 let titleText = 'Stage 1 — Keywords Generator';
@@ -142,10 +145,14 @@
                     subText = 'Verify city GMB density (10-15+) and reviews (top 3 ≤ 100).';
                 } else if (assignedStage === 4) {
                     color = 'var(--stage-4)';
-                    titleText = 'Stage 4 — SERP Analysis & Finalization';
-                    subText = 'Analyze competitor DA (<10 ≥ 4), R&R site presence, and directories.';
+                    titleText = 'Stage 4 — DA & Traffic Check';
+                    subText = 'Check for low DA sites (DA < 10 ≥ 4) and traffic distribution.';
+                } else if (assignedStage === 5) {
+                    color = 'var(--stage-5)';
+                    titleText = 'Stage 5 — Directories & R&R Check';
+                    subText = 'Check directories and Rank & Rent sites presence.';
                 }
-
+ 
                 icon.style.background = color;
                 icon.textContent = assignedStage;
                 title.textContent = titleText;
@@ -153,7 +160,7 @@
                 meta.textContent = 'Worker Session';
                 banner.style.display = 'flex';
             }
-
+ 
             // Ensure our assigned panel is active
             const activePanel = document.getElementById(`panel${assignedStage}`);
             if (activePanel) {
@@ -165,11 +172,12 @@
             const startStage = requestedStage || 1;
             activateTab(startStage);
         }
-
+ 
         initStage1();
         initStage2();
         initStage3();
         initStage4();
+        initStage5();
         await loadAllPipelineData();
     });
 
@@ -339,10 +347,11 @@
         updateStageView(2);
         updateStageView(3);
         updateStageView(4);
+        updateStageView(5);
     }
 
     function updatePipelineStats() {
-        for (let s = 1; s <= 4; s++) {
+        for (let s = 1; s <= 5; s++) {
             const pending = allPipelineData.filter(r => r.stage === s && r.status === 'pending');
             const dot = document.getElementById(`pipelineDot${s}`);
             const count = document.getElementById(`pipelineCount${s}`);
@@ -680,10 +689,11 @@
         container.innerHTML = html;
     }
 
-    // ─── STAGE 2/3/4 LOGIC (shared) ───
+    // ─── STAGE 2/3/4/5 LOGIC (shared) ───
     function initStage2() { initStageN(2); }
     function initStage3() { initStageN(3); }
     function initStage4() { initStageN(4); }
+    function initStage5() { initStageN(5); }
 
     function initStageN(stageNum) {
         const textarea = document.getElementById(`stage${stageNum}Textarea`);
@@ -723,7 +733,8 @@
             let stageText = '';
             if (stageNum === 2) stageText = 'KD Check';
             else if (stageNum === 3) stageText = 'GMB Check';
-            else if (stageNum === 4) stageText = 'SERP Analysis';
+            else if (stageNum === 4) stageText = 'DA & Traffic Check';
+            else if (stageNum === 5) stageText = 'Directories & R&R Check';
             pendingTitleEl.textContent = `Pending — Needs ${stageText} (${pendingBatches.length} groups pending)`;
         }
 
@@ -787,7 +798,13 @@
             if (hasNote && kw.notes.trim().startsWith('{')) {
                 try {
                     const parsed = JSON.parse(kw.notes);
-                    noteDisplay = `Reviews: ${parsed.gmb_reviews || '—'} | GMBs: ${parsed.gmb_count || '—'}`;
+                    if (parsed.gmb_reviews !== undefined || parsed.gmb_count !== undefined) {
+                        noteDisplay = `Reviews: ${parsed.gmb_reviews || '—'} | GMBs: ${parsed.gmb_count || '—'}`;
+                    } else if (parsed.low_da !== undefined || parsed.traffic !== undefined) {
+                        noteDisplay = `Low DA: ${parsed.low_da || '—'} | Traffic: ${parsed.traffic || '—'}`;
+                    } else if (parsed.directories !== undefined || parsed.rr_sites !== undefined) {
+                        noteDisplay = `Dirs: ${parsed.directories || '—'} | R&R: ${parsed.rr_sites || '—'}`;
+                    }
                 } catch (e) {}
             }
             const noteIndicator = (isChecked && hasNote)
@@ -1220,6 +1237,32 @@
                                style="flex: 0.8; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem; min-width: 0;">
                     </div>
                 `;
+            } else if (stageNum === 4) {
+                noteInputHtml = `
+                    <div style="display: flex; gap: 0.5rem; width: 100%;">
+                        <input type="text" class="preview-low-da-input" 
+                               data-kw-id="${kw.id}" 
+                               placeholder="Low DA sites..."
+                               style="flex: 1; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem; min-width: 0;">
+                        <input type="text" class="preview-traffic-input" 
+                               data-kw-id="${kw.id}" 
+                               placeholder="Traffic (e.g. 500-10)..."
+                               style="flex: 1; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem; min-width: 0;">
+                    </div>
+                `;
+            } else if (stageNum === 5) {
+                noteInputHtml = `
+                    <div style="display: flex; gap: 0.5rem; width: 100%;">
+                        <input type="text" class="preview-directories-input" 
+                               data-kw-id="${kw.id}" 
+                               placeholder="Directories..."
+                               style="flex: 1; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem; min-width: 0;">
+                        <input type="text" class="preview-rr-sites-input" 
+                               data-kw-id="${kw.id}" 
+                               placeholder="R&R sites..."
+                               style="flex: 1; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem; min-width: 0;">
+                    </div>
+                `;
             } else {
                 noteInputHtml = `
                     <input type="text" class="preview-note-input" 
@@ -1240,11 +1283,28 @@
             `;
         }).join('');
 
+        // Attach Enter key navigation between input fields in preview table
+        const inputs = previewBody.querySelectorAll('input');
+        inputs.forEach((input, index) => {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const nextInput = inputs[index + 1];
+                    if (nextInput) {
+                        nextInput.focus();
+                        if (typeof nextInput.select === 'function') nextInput.select();
+                    } else {
+                        input.blur();
+                    }
+                }
+            });
+        });
+
         previewContainer.style.display = 'block';
         previewContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // Submit for stages 2, 3, 4 — uses preview data
+    // Submit for stages 2, 3, 4, 5 — uses preview data
     async function submitStageN(stageNum) {
         const textarea = document.getElementById(`stage${stageNum}Textarea`);
         const groupSelect = document.getElementById(`stage${stageNum}GroupSelect`);
@@ -1287,6 +1347,42 @@
                         notesMap[kwId] = JSON.stringify({
                             gmb_reviews: reviewsText,
                             gmb_count: countVal
+                        });
+                    }
+                }
+            });
+        } else if (stageNum === 4) {
+            const rows = previewContainer.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                if (validationFailed) return;
+                const lowDaInput = row.querySelector('.preview-low-da-input');
+                const trafficInput = row.querySelector('.preview-traffic-input');
+                if (lowDaInput && trafficInput) {
+                    const kwId = lowDaInput.dataset.kwId;
+                    const lowDaText = lowDaInput.value.trim();
+                    const trafficText = trafficInput.value.trim();
+                    if (lowDaText || trafficText) {
+                        notesMap[kwId] = JSON.stringify({
+                            low_da: lowDaText,
+                            traffic: trafficText
+                        });
+                    }
+                }
+            });
+        } else if (stageNum === 5) {
+            const rows = previewContainer.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                if (validationFailed) return;
+                const dirsInput = row.querySelector('.preview-directories-input');
+                const rrInput = row.querySelector('.preview-rr-sites-input');
+                if (dirsInput && rrInput) {
+                    const kwId = dirsInput.dataset.kwId;
+                    const dirsText = dirsInput.value.trim();
+                    const rrText = rrInput.value.trim();
+                    if (dirsText || rrText) {
+                        notesMap[kwId] = JSON.stringify({
+                            directories: dirsText,
+                            rr_sites: rrText
                         });
                     }
                 }
@@ -1370,11 +1466,11 @@
             showToast(`⚠️ ${unmatchedRows.length} keyword(s) marked as failed at Stage ${stageNum}`, 'warning');
         }
 
-        if (stageNum === 4) {
-            // Stage 4: Save to main niches table
+        if (stageNum === 5) {
+            // Stage 5: Save to main niches table
             await saveFinalToNiches(matched);
 
-            // Also create stage 4 records for tracking
+            // Also create stage 5 records for tracking
             const newBatchId = generateId();
             const now = new Date().toISOString();
             const newRows = matched.map(m => ({
@@ -1384,18 +1480,18 @@
                 city: m.city,
                 state: m.state,
                 volume: m.volume,
-                stage: 4,
+                stage: 5,
                 batch_id: newBatchId,
                 batch_label: m.batch_label,
                 status: 'checked',
-                stage_4_at: now,
+                stage_5_at: now,
                 checked_at: now,
                 created_at: now
             }));
             await insertPipelineRows(newRows);
             showToast(`🏆 ${matched.length} keywords saved to main dashboard!`, 'success');
         } else {
-            // Stages 2 & 3: Create new batch in current stage
+            // Stages 2, 3 & 4: Create new batch in current stage
             const newBatchId = generateId();
             const now = new Date().toISOString();
             const stageKey = `stage_${stageNum}_at`;
@@ -1463,7 +1559,7 @@
                 // row.stage is the stage that CREATED the row, but notes were written
                 // by the NEXT stage's worker, so the note belongs to stage + 1
                 const writerStage = row.stage + 1;
-                if (writerStage < 2 || writerStage > 4) return; // Only stages 2-4 have notes
+                if (writerStage < 2 || writerStage > 5) return; // Only stages 2-5 have notes
                 const stageKey = `stage_${writerStage}`;
                 // Keep the latest note if duplicates
                 if (!notes[stageKey] || new Date(row.created_at) > new Date(notes[stageKey].date)) {
@@ -1484,7 +1580,24 @@
             }
             result.stage_3 = s3Val;
         }
-        if (notes.stage_4) result.stage_4 = notes.stage_4.text;
+        if (notes.stage_4) {
+            let s4Val = notes.stage_4.text;
+            if (s4Val && s4Val.startsWith('{')) {
+                try {
+                    s4Val = JSON.parse(s4Val);
+                } catch (e) {}
+            }
+            result.stage_4 = s4Val;
+        }
+        if (notes.stage_5) {
+            let s5Val = notes.stage_5.text;
+            if (s5Val && s5Val.startsWith('{')) {
+                try {
+                    s5Val = JSON.parse(s5Val);
+                } catch (e) {}
+            }
+            result.stage_5 = s5Val;
+        }
 
         return Object.keys(result).length > 0 ? result : null;
     }
@@ -1582,7 +1695,7 @@
     }
 
     function getSubmitBtnText(stageNum) {
-        if (stageNum === 4) return '<i class="fa-solid fa-trophy"></i> Finalize & Save to Main Dashboard';
+        if (stageNum === 5) return '<i class="fa-solid fa-trophy"></i> Finalize & Save to Main Dashboard';
         return `<i class="fa-solid fa-paper-plane"></i> Submit & Send to Stage ${stageNum + 1}`;
     }
 

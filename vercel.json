@@ -5,6 +5,7 @@
     { "src": "/stage2", "dest": "/funnel" },
     { "src": "/stage3", "dest": "/funnel" },
     { "src": "/stage4", "dest": "/funnel" },
+    { "src": "/stage5", "dest": "/funnel" },
     { "src": "/funnel-login", "dest": "/funnel-login" },
     { "src": "/admin", "dest": "/admin-login" },
     { "src": "/admin-dashboard", "dest": "/admin-dashboard" },
