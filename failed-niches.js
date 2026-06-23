@@ -582,10 +582,20 @@ function renderTable() {
             .map(item => item.state ? item.state.trim().toUpperCase() : '')
             .filter(Boolean)
     );
+    const uniqueCities = new Set(
+        failedData
+            .map(item => {
+                const city = (item.city || '').trim().toLowerCase();
+                const state = (item.state || '').trim().toLowerCase();
+                return city && state ? `${city}|${state}` : city;
+            })
+            .filter(Boolean)
+    );
     const totalVolume = failedData.reduce((sum, item) => sum + (parseInt(item.volume) || 0), 0);
 
     const totalEl = document.getElementById('statFailedTotal');
     const statesEl = document.getElementById('statFailedStates');
+    const citiesEl = document.getElementById('statFailedCities');
     const volumeEl = document.getElementById('statFailedVolume');
 
     function formatCount(num) {
@@ -597,6 +607,7 @@ function renderTable() {
 
     if (totalEl) totalEl.textContent = formatCount(total);
     if (statesEl) statesEl.textContent = formatCount(uniqueStates.size);
+    if (citiesEl) citiesEl.textContent = formatCount(uniqueCities.size);
     if (volumeEl) volumeEl.textContent = formatCount(totalVolume);
 
     tbody.innerHTML = '';
@@ -717,6 +728,7 @@ function renderTable() {
                 <div class="pagination-right">
                     <button id="copyKeywordsBtn" class="btn btn-secondary pagination-action-btn"><i class="fa-regular fa-clipboard"></i> Copy keywords</button>
                     <button id="exportCsvBtn" class="btn btn-secondary pagination-action-btn"><i class="fa-solid fa-file-csv"></i> Export filtered CSV</button>
+                    <button id="exportCitiesBtn" class="btn btn-secondary pagination-action-btn"><i class="fa-solid fa-file-csv"></i> Export Cities + State (.csv)</button>
                 </div>
             </div>
         `;
@@ -781,6 +793,59 @@ function renderTable() {
             link.click();
             document.body.removeChild(link);
             showToast('Exported filtered CSV successfully!');
+        });
+
+        // Bind export unique cities + state to TXT file (no comma separation) - sorted alphabetically by state
+        document.getElementById('exportCitiesBtn').addEventListener('click', () => {
+            if (filtered.length === 0) {
+                showToast('No records to export.', true);
+                return;
+            }
+
+            const cityStateList = [];
+            const seen = new Set();
+            filtered.forEach(item => {
+                const city = (item.city || '').trim().toLowerCase();
+                const state = (item.state || '').trim().toUpperCase();
+                if (city && state) {
+                    const key = `${city}|${state}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        cityStateList.push({ city, state });
+                    }
+                }
+            });
+
+            if (cityStateList.length === 0) {
+                showToast('No valid cities found to export.', true);
+                return;
+            }
+
+            // Sort alphabetically by state, then by city
+            cityStateList.sort((a, b) => {
+                const stateCompare = a.state.localeCompare(b.state);
+                if (stateCompare !== 0) return stateCompare;
+                return a.city.localeCompare(b.city);
+            });
+
+            const csvRows = [["City", "State"]];
+            cityStateList.forEach(item => {
+                const escapedCity = item.city.replace(/"/g, '""');
+                const escapedState = item.state.toLowerCase().replace(/"/g, '""');
+                csvRows.push([`"${escapedCity}"`, `"${escapedState}"`]);
+            });
+
+            const content = csvRows.map(r => r.join(",")).join("\n");
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `failed_cities_state_${Date.now()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('Exported unique cities + state .csv successfully!');
         });
     }
 }

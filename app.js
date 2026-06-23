@@ -830,7 +830,11 @@ function renderStats() {
     // Unique Cities count
     const uniqueCities = new Set(
         nichesData
-            .map(item => item.city ? item.city.trim().toLowerCase() : '')
+            .map(item => {
+                const city = (item.city || '').trim().toLowerCase();
+                const state = (item.state || '').trim().toLowerCase();
+                return city && state ? `${city}|${state}` : city;
+            })
             .filter(Boolean)
     );
     
@@ -1034,6 +1038,7 @@ function renderNicheGrid() {
                 <div class="pagination-right">
                     <button id="copyKeywordsBtn" class="btn btn-secondary pagination-action-btn"><i class="fa-regular fa-clipboard"></i> Copy keywords</button>
                     <button id="exportCsvBtnBottom" class="btn btn-secondary pagination-action-btn"><i class="fa-solid fa-file-csv"></i> Export filtered CSV</button>
+                    <button id="exportCitiesBtnBottom" class="btn btn-secondary pagination-action-btn"><i class="fa-solid fa-file-csv"></i> Export Cities + State (.csv)</button>
                 </div>
             </div>
         `;
@@ -1069,6 +1074,59 @@ function renderNicheGrid() {
 
         document.getElementById('exportCsvBtnBottom').addEventListener('click', () => {
             exportDataCSV(true);
+        });
+
+        // Bind export unique cities + state to TXT file (no comma separation) - sorted alphabetically by state
+        document.getElementById('exportCitiesBtnBottom').addEventListener('click', () => {
+            if (filtered.length === 0) {
+                showToast('No records to export.', true);
+                return;
+            }
+
+            const cityStateList = [];
+            const seen = new Set();
+            filtered.forEach(item => {
+                const city = (item.city || '').trim().toLowerCase();
+                const state = (item.state || '').trim().toUpperCase();
+                if (city && state) {
+                    const key = `${city}|${state}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        cityStateList.push({ city, state });
+                    }
+                }
+            });
+
+            if (cityStateList.length === 0) {
+                showToast('No valid cities found to export.', true);
+                return;
+            }
+
+            // Sort alphabetically by state, then by city
+            cityStateList.sort((a, b) => {
+                const stateCompare = a.state.localeCompare(b.state);
+                if (stateCompare !== 0) return stateCompare;
+                return a.city.localeCompare(b.city);
+            });
+
+            const csvRows = [["City", "State"]];
+            cityStateList.forEach(item => {
+                const escapedCity = item.city.replace(/"/g, '""');
+                const escapedState = item.state.toLowerCase().replace(/"/g, '""');
+                csvRows.push([`"${escapedCity}"`, `"${escapedState}"`]);
+            });
+
+            const content = csvRows.map(r => r.join(",")).join("\n");
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `passed_cities_state_${Date.now()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('Exported unique cities + state .csv successfully!');
         });
     }
 }
