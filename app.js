@@ -23,6 +23,9 @@ let currentFilters = {
     maxPopulation: null
 };
 
+let currentPage = 1;
+const PAGE_SIZE = 50;
+
 
 
 
@@ -150,22 +153,60 @@ function fallbackToLocal() {
 
 // Load Niche Records
 async function loadNiches() {
+    let remoteNiches = [];
     if (supabaseClient) {
         try {
             const { data, error } = await supabaseClient
                 .from('niches')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('*');
 
-            if (error) throw error;
-            nichesData = data || [];
+            if (!error && data) {
+                remoteNiches = data;
+            }
         } catch (e) {
-            console.error("Supabase fetch failed, falling back to LocalStorage:", e);
-            loadLocalNiches();
+            console.error("Supabase fetch failed:", e);
         }
-    } else {
-        loadLocalNiches();
     }
+
+    // Load Local Storage
+    let localNiches = [];
+    try {
+        const local = localStorage.getItem('rank_rent_niches');
+        if (local) {
+            localNiches = JSON.parse(local);
+        }
+    } catch (e) {
+        console.warn("Failed to load local niches:", e);
+    }
+
+    // Merge without duplicates
+    const merged = [...remoteNiches];
+    const existingKeys = new Set(merged.map(item => `${(item.keyword || '').toLowerCase()}|${(item.state || '').toLowerCase()}`));
+
+    localNiches.forEach(item => {
+        const key = `${(item.keyword || '').toLowerCase()}|${(item.state || '').toLowerCase()}`;
+        if (!existingKeys.has(key)) {
+            merged.push(item);
+            existingKeys.add(key);
+        }
+    });
+
+    if (merged.length > 0) {
+        localStorage.setItem('rank_rent_initialized', 'true');
+    }
+
+    merged.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    nichesData = merged;
+
+    if (nichesData.length === 0) {
+        if (!localStorage.getItem('rank_rent_initialized')) {
+            nichesData = getMockData();
+            localStorage.setItem('rank_rent_initialized', 'true');
+        } else {
+            nichesData = [];
+        }
+    }
+
     renderDashboard();
 }
 
@@ -277,6 +318,7 @@ function setupEventListeners() {
             currentViewBy = 'cities';
             viewBtnCities.classList.add('active');
             viewBtnStates.classList.remove('active');
+            currentPage = 1;
             renderNicheGrid();
         });
         
@@ -285,6 +327,7 @@ function setupEventListeners() {
             currentViewBy = 'states';
             viewBtnStates.classList.add('active');
             viewBtnCities.classList.remove('active');
+            currentPage = 1;
             renderNicheGrid();
         });
     }
@@ -298,26 +341,31 @@ function setupEventListeners() {
     // Filter controls
     searchNiche.addEventListener('input', (e) => {
         currentFilters.keyword = e.target.value.toLowerCase();
+        currentPage = 1;
         renderNicheGrid();
     });
 
     filterState.addEventListener('change', (e) => {
         currentFilters.state = e.target.value;
+        currentPage = 1;
         renderNicheGrid();
     });
 
     filterNiche.addEventListener('change', (e) => {
         currentFilters.niche = e.target.value;
+        currentPage = 1;
         renderNicheGrid();
     });
 
     filterCity.addEventListener('change', (e) => {
         currentFilters.city = e.target.value;
+        currentPage = 1;
         renderNicheGrid();
     });
 
     filterZips.addEventListener('input', (e) => {
         currentFilters.zips = e.target.value ? parseInt(e.target.value) : null;
+        currentPage = 1;
         renderNicheGrid();
     });
 
@@ -341,6 +389,7 @@ function setupEventListeners() {
                     if (e.target.id === 'filterExactRr') currentFilters.exactRr = val;
                     if (e.target.id === 'filterMinPopulation') currentFilters.minPopulation = val;
                     if (e.target.id === 'filterMaxPopulation') currentFilters.maxPopulation = val;
+                    currentPage = 1;
                     renderNicheGrid();
                 });
             }
@@ -368,6 +417,7 @@ function setupEventListeners() {
             currentFilters.exactRr = null;
             currentFilters.minPopulation = null;
             currentFilters.maxPopulation = null;
+            currentPage = 1;
             renderNicheGrid();
         });
     }
@@ -377,6 +427,7 @@ function setupEventListeners() {
             statusPills.forEach(p => p.classList.remove('active'));
             e.target.classList.add('active');
             currentFilters.status = e.target.dataset.status;
+            currentPage = 1;
             renderNicheGrid();
         });
     });
@@ -591,6 +642,8 @@ async function deleteNiche(id) {
     });
 
     if (!confirmedData.confirmed) return;
+
+    localStorage.setItem('rank_rent_initialized', 'true');
 
     if (supabaseClient && (!id || !id.toString().startsWith('local-'))) {
         try {
@@ -835,8 +888,52 @@ function renderNicheGrid() {
                 <p>Try clearing your search filters or check your funnel submissions.</p>
             </div>
         `;
+        const paginationContainer = document.getElementById('paginationContainer');
+        if (paginationContainer) paginationContainer.innerHTML = '';
         return;
     }
+
+    // Build unique states aggregated data if states view is selected
+    let aggregated = [];
+    if (currentViewBy !== 'cities') {
+        const stateData = {};
+        filtered.forEach(item => {
+            if (item.state) {
+                const stateUpper = item.state.toUpperCase();
+                if (!stateData[stateUpper]) {
+                    stateData[stateUpper] = {
+                        cities: new Set(),
+                        niches: new Set()
+                    };
+                }
+                if (item.city) stateData[stateUpper].cities.add(item.city.toLowerCase());
+                if (item.niche) stateData[stateUpper].niches.add(item.niche.toLowerCase());
+            }
+        });
+
+        aggregated = Object.entries(stateData).map(([state, data]) => ({
+            state,
+            cityCount: data.cities.size,
+            nicheCount: data.niches.size
+        })).sort((a, b) => b.cityCount - a.cityCount);
+    }
+
+    const totalItems = currentViewBy === 'cities' ? filtered.length : aggregated.length;
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+
+    // Safety check on currentPage
+    if (currentPage > totalPages) {
+        currentPage = totalPages || 1;
+    }
+    if (currentPage < 1) {
+        currentPage = 1;
+    }
+
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    const endIdx = currentPage * PAGE_SIZE;
+    
+    const paginatedCities = currentViewBy === 'cities' ? filtered.slice(startIdx, endIdx) : [];
+    const paginatedStates = currentViewBy !== 'cities' ? aggregated.slice(startIdx, endIdx) : [];
 
     const tableContainer = document.createElement('div');
     tableContainer.className = 'niche-table-container';
@@ -861,7 +958,7 @@ function renderNicheGrid() {
 
         const tbody = table.querySelector('#nicheTableBody');
 
-        filtered.forEach((item, index) => {
+        paginatedCities.forEach((item, index) => {
             const tr = document.createElement('tr');
             
             const cityVal = item.city || '';
@@ -871,7 +968,7 @@ function renderNicheGrid() {
             const volumeVal = item.volume !== undefined && item.volume !== null ? item.volume : '0';
 
             tr.innerHTML = `
-                <td class="row-number"><span class="row-arrow">▸</span>${index + 1}</td>
+                <td class="row-number"><span class="row-arrow">▸</span>${startIdx + index + 1}</td>
                 <td class="row-keyword">${escapeHtml(keywordVal)}</td>
                 <td class="row-city">${escapeHtml(cityVal)}</td>
                 <td class="row-state">${escapeHtml(stateVal)}</td>
@@ -896,33 +993,11 @@ function renderNicheGrid() {
 
         const tbody = table.querySelector('#nicheTableBody');
 
-        // Group filtered records by state and collect unique cities and niches
-        const stateData = {};
-        filtered.forEach(item => {
-            if (item.state) {
-                const stateUpper = item.state.toUpperCase();
-                if (!stateData[stateUpper]) {
-                    stateData[stateUpper] = {
-                        cities: new Set(),
-                        niches: new Set()
-                    };
-                }
-                if (item.city) stateData[stateUpper].cities.add(item.city.toLowerCase());
-                if (item.niche) stateData[stateUpper].niches.add(item.niche.toLowerCase());
-            }
-        });
-
-        const aggregated = Object.entries(stateData).map(([state, data]) => ({
-            state,
-            cityCount: data.cities.size,
-            nicheCount: data.niches.size
-        })).sort((a, b) => b.cityCount - a.cityCount);
-
-        aggregated.forEach((item, index) => {
+        paginatedStates.forEach((item, index) => {
             const tr = document.createElement('tr');
 
             tr.innerHTML = `
-                <td class="row-number"><span class="row-arrow">▸</span>${index + 1}</td>
+                <td class="row-number"><span class="row-arrow">▸</span>${startIdx + index + 1}</td>
                 <td><span class="state-badge-pill">${escapeHtml(item.state)}</span></td>
                 <td style="text-align: right; font-weight: 600; color: #ff7e47;">${item.nicheCount}</td>
                 <td class="row-volume" style="text-align: right;">${item.cityCount}</td>
@@ -934,6 +1009,57 @@ function renderNicheGrid() {
 
     tableContainer.appendChild(table);
     nicheGrid.appendChild(tableContainer);
+
+    // Render Pagination Controls
+    const paginationContainer = document.getElementById('paginationContainer');
+    if (paginationContainer) {
+        paginationContainer.innerHTML = `
+            <div class="pagination-bar">
+                <div class="pagination-left">
+                    <button id="prevPageBtn" class="btn btn-secondary pagination-btn" ${currentPage === 1 ? 'disabled' : ''}>&larr; Prev</button>
+                    <span id="pageIndicator" class="page-indicator">Page ${currentPage} of ${totalPages || 1}</span>
+                    <button id="nextPageBtn" class="btn btn-secondary pagination-btn" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>Next &rarr;</button>
+                </div>
+                <div class="pagination-right">
+                    <button id="copyKeywordsBtn" class="btn btn-secondary pagination-action-btn"><i class="fa-regular fa-clipboard"></i> Copy keywords</button>
+                    <button id="exportCsvBtnBottom" class="btn btn-secondary pagination-action-btn"><i class="fa-solid fa-file-csv"></i> Export filtered CSV</button>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('prevPageBtn').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderNicheGrid();
+            }
+        });
+
+        document.getElementById('nextPageBtn').addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderNicheGrid();
+            }
+        });
+
+        document.getElementById('copyKeywordsBtn').addEventListener('click', () => {
+            let text = '';
+            if (currentViewBy === 'cities') {
+                text = filtered.map(item => item.keyword).join('\n');
+            } else {
+                text = aggregated.map(item => item.state).join('\n');
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied all filtered entries to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy entries:', err);
+                alert('Failed to copy entries.');
+            });
+        });
+
+        document.getElementById('exportCsvBtnBottom').addEventListener('click', () => {
+            exportDataCSV(true);
+        });
+    }
 }
 
 

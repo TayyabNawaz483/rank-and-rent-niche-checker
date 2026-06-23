@@ -5,6 +5,8 @@ let failedDbData = [];
 let activeTab = 'active'; // 'active' or 'failed'
 let selectedIds = new Set();
 let adminClient = null;
+let currentPage = 1;
+const PAGE_SIZE = 50;
 
 // Form selectors for Niche Add Modal
 let openAddModalBtn, closeAddModalBtn, cancelAddBtn, addModal, saveNicheBtn, nicheForm;
@@ -96,6 +98,7 @@ function setupAdminListeners() {
             selectedIds.clear();
             updateBulkActionsBar();
             
+            currentPage = 1;
             renderTableHeader();
             await fetchAdminData();
         });
@@ -126,6 +129,7 @@ function setupAdminListeners() {
             selectedIds.clear();
             updateBulkActionsBar();
             
+            currentPage = 1;
             renderTableHeader();
             await fetchFailedNiches();
         });
@@ -230,31 +234,69 @@ function setupAdminListeners() {
 }
 
 async function fetchAdminData() {
+    let remoteNiches = [];
     try {
-        const { data, error } = await adminClient
-            .from('niches')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        dbData = data || [];
-        renderTable();
+        if (adminClient) {
+            const { data, error } = await adminClient
+                .from('niches')
+                .select('*');
+            if (error) throw error;
+            remoteNiches = data || [];
+        }
     } catch (error) {
-        console.error("Error fetching data:", error);
-        document.getElementById('tableBody').innerHTML = `
-            <tr>
-                <td colspan="9" style="text-align: center; color: var(--danger); padding: 2rem;">
-                    Failed to load data. Please ensure your Supabase connection is valid and RLS policies allow you to read.
-                    <br><br><small>${error.message || ''}</small>
-                </td>
-            </tr>
-        `;
+        console.error("Error fetching remote niches data:", error);
     }
+
+    // Load from local storage
+    let localNiches = [];
+    try {
+        const local = localStorage.getItem('rank_rent_niches');
+        if (local) {
+            localNiches = JSON.parse(local);
+        }
+    } catch (e) {
+        console.warn("Failed to load local niches:", e);
+    }
+
+    // Merge niches
+    const merged = [...remoteNiches];
+    const existingKeys = new Set(merged.map(item => `${(item.keyword || '').toLowerCase()}|${(item.state || '').toLowerCase()}`));
+
+    localNiches.forEach(item => {
+        const key = `${(item.keyword || '').toLowerCase()}|${(item.state || '').toLowerCase()}`;
+        if (!existingKeys.has(key)) {
+            merged.push(item);
+            existingKeys.add(key);
+        }
+    });
+
+    if (merged.length > 0) {
+        localStorage.setItem('rank_rent_initialized', 'true');
+    }
+
+    merged.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    dbData = merged;
+    renderTable();
 }
 
 function renderTable() {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
+
+    const totalItems = dbData.length;
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    
+    // Safety check on currentPage
+    if (currentPage > totalPages) {
+        currentPage = totalPages || 1;
+    }
+    if (currentPage < 1) {
+        currentPage = 1;
+    }
+
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    const endIdx = currentPage * PAGE_SIZE;
+    const paginatedItems = dbData.slice(startIdx, endIdx);
 
     if (dbData.length === 0) {
         tbody.innerHTML = `
@@ -264,10 +306,12 @@ function renderTable() {
                 </td>
             </tr>
         `;
+        const paginationContainer = document.getElementById('paginationContainer');
+        if (paginationContainer) paginationContainer.innerHTML = '';
         return;
     }
 
-    dbData.forEach(item => {
+    paginatedItems.forEach(item => {
         const tr = document.createElement('tr');
         const dateStr = new Date(item.created_at).toLocaleDateString();
 
@@ -293,6 +337,7 @@ function renderTable() {
 
     // Bind individual checkboxes
     document.querySelectorAll('.row-checkbox').forEach(cb => {
+        cb.checked = selectedIds.has(cb.value.toString()) || selectedIds.has(cb.value);
         cb.addEventListener('change', (e) => {
             if (e.target.checked) {
                 selectedIds.add(e.target.value);
@@ -327,6 +372,8 @@ function renderTable() {
             openNotesEditor(id);
         });
     });
+
+    renderAdminPagination(totalPages, dbData);
 }
 
 function updateBulkActionsBar() {
@@ -347,6 +394,9 @@ async function handleSingleDelete(id) {
     console.log("User confirmation:", confirmed);
     if (!confirmed) return;
 
+    localStorage.setItem('rank_rent_initialized', 'true');
+    localStorage.setItem('rank_rent_failed_initialized', 'true');
+
     const targetTable = activeTab === 'active' ? 'niches' : 'failed_niches';
 
     try {
@@ -356,6 +406,7 @@ async function handleSingleDelete(id) {
         if (activeTab === 'active') {
             dbData = dbData.filter(item => item.id != id);
             selectedIds.delete(id);
+            localStorage.setItem('rank_rent_niches', JSON.stringify(dbData));
             renderTable();
         } else {
             failedDbData = failedDbData.filter(item => item.id != id);
@@ -369,6 +420,7 @@ async function handleSingleDelete(id) {
         if (activeTab === 'active') {
             dbData = dbData.filter(item => item.id != id);
             selectedIds.delete(id);
+            localStorage.setItem('rank_rent_niches', JSON.stringify(dbData));
             renderTable();
         } else {
             failedDbData = failedDbData.filter(item => item.id != id);
@@ -384,6 +436,9 @@ async function handleBulkDelete() {
     const confirmed = await showDeleteConfirm(`Are you sure you want to delete ${selectedIds.size} records forever? This action cannot be undone.`, true);
     if (!confirmed) return;
 
+    localStorage.setItem('rank_rent_initialized', 'true');
+    localStorage.setItem('rank_rent_failed_initialized', 'true');
+
     const idsToDelete = Array.from(selectedIds);
     const targetTable = activeTab === 'active' ? 'niches' : 'failed_niches';
 
@@ -395,6 +450,7 @@ async function handleBulkDelete() {
             dbData = dbData.filter(item => !selectedIds.has(item.id.toString()) && !selectedIds.has(item.id));
             selectedIds.clear();
             document.getElementById('selectAllCheckbox').checked = false;
+            localStorage.setItem('rank_rent_niches', JSON.stringify(dbData));
             renderTable();
         } else {
             failedDbData = failedDbData.filter(item => !selectedIds.has(item.id.toString()) && !selectedIds.has(item.id));
@@ -410,6 +466,7 @@ async function handleBulkDelete() {
             dbData = dbData.filter(item => !selectedIds.has(item.id.toString()) && !selectedIds.has(item.id));
             selectedIds.clear();
             document.getElementById('selectAllCheckbox').checked = false;
+            localStorage.setItem('rank_rent_niches', JSON.stringify(dbData));
             renderTable();
         } else {
             failedDbData = failedDbData.filter(item => !selectedIds.has(item.id.toString()) && !selectedIds.has(item.id));
@@ -1301,14 +1358,295 @@ async function fetchFailedNiches() {
         `;
     }
 
-    try {
-        const { data, error } = await adminClient
-            .from('failed_niches')
-            .select('*')
-            .order('created_at', { ascending: false });
+    let remoteFailed = [];
+    let remotePipelineFailed = [];
 
-        if (error) throw error;
-        failedDbData = data || [];
+    try {
+        if (adminClient) {
+            // 1. Fetch from failed_niches
+            try {
+                const { data, error } = await adminClient
+                    .from('failed_niches')
+                    .select('*');
+                if (!error && data) {
+                    remoteFailed = data;
+                }
+            } catch (e) {
+                console.warn("Failed to fetch failed_niches table:", e);
+            }
+
+            // 2. Fetch from pipeline_keywords where status is failed
+            try {
+                const { data, error } = await adminClient
+                    .from('pipeline_keywords')
+                    .select('*')
+                    .eq('status', 'failed');
+                if (!error && data) {
+                    remotePipelineFailed = data.map(pk => ({
+                        id: pk.id,
+                        keyword: pk.keyword,
+                        niche: pk.niche,
+                        city: pk.city,
+                        state: pk.state,
+                        volume: pk.volume || 0,
+                        failed_stage: pk.stage + 1, // stage check failure is (last completed stage + 1)
+                        fail_reason: 'Failed during pipeline stage check',
+                        created_by: pk.created_by || 'system@rankrent.com',
+                        created_at: pk.checked_at || pk.created_at
+                    }));
+                }
+            } catch (e) {
+                console.warn("Failed to fetch pipeline failed keywords:", e);
+            }
+        }
+
+        // 3. Fetch from localStorage
+        let localFailed = [];
+        try {
+            const local = localStorage.getItem('rank_rent_failed_niches');
+            if (local) {
+                localFailed = JSON.parse(local);
+            }
+        } catch (e) {
+            console.warn("Failed to load local failed niches:", e);
+        }
+
+        // Deduplicate and merge sources: primary failed_niches first, then pipeline failed keywords, then local cache
+        const merged = [];
+        const existingKeys = new Set();
+
+        const addRecord = (item) => {
+            const key = `${(item.keyword || '').toLowerCase()}|${(item.state || '').toLowerCase()}`;
+            if (!existingKeys.has(key)) {
+                // Auto-heal failed_stage for keywords with volume >= 50 that are incorrectly marked as Stage 1 (S1)
+                const fs = parseInt(item.failed_stage, 10);
+                const vol = parseInt(item.volume || 0, 10);
+                if (fs === 1 && vol >= 50) {
+                    const reason = (item.fail_reason || '').toLowerCase();
+                    if (reason.includes('stage 3') || reason.includes('gmb')) {
+                        item.failed_stage = 3;
+                    } else if (reason.includes('stage 4') || reason.includes('traffic') || reason.includes('da')) {
+                        item.failed_stage = 4;
+                    } else if (reason.includes('stage 5') || reason.includes('directory')) {
+                        item.failed_stage = 5;
+                    } else {
+                        item.failed_stage = 2; // Default to Stage 2 KD Check failure
+                    }
+                }
+                merged.push(item);
+                existingKeys.add(key);
+            }
+        };
+
+        remoteFailed.forEach(addRecord);
+        remotePipelineFailed.forEach(addRecord);
+        localFailed.forEach(addRecord);
+
+        // Self-healing database correction block for mismatched niche (Sioux Falls)
+        const badRow = merged.find(d => 
+            d.keyword && d.keyword.toLowerCase() === 'appliance repair sioux falls' && 
+            d.niche === 'appliance repair sioux'
+        );
+        if (badRow && adminClient) {
+            console.log("Fixing incorrect failed niche in database...", badRow.id);
+            try {
+                await adminClient
+                    .from('failed_niches')
+                    .update({ niche: 'appliance repair', city: 'Sioux Falls' })
+                    .eq('id', badRow.id);
+                badRow.niche = 'appliance repair';
+                badRow.city = 'Sioux Falls';
+                console.log("Database successfully updated.");
+            } catch(e) {
+                console.error("Database update failed:", e);
+            }
+        }
+
+        // Self-healing database correction block for mismatched niche (Lexington)
+        const badLexingtonRow = merged.find(d =>
+            d.keyword && d.keyword.toLowerCase() === 'refrigerator repair lexington' &&
+            d.niche === 'appliance'
+        );
+        if (badLexingtonRow && adminClient) {
+            console.log("Fixing incorrect lexington failed niche in database...", badLexingtonRow.id);
+            try {
+                await adminClient
+                    .from('failed_niches')
+                    .update({ niche: 'appliance repair', city: 'Lexington' })
+                    .eq('id', badLexingtonRow.id);
+                badLexingtonRow.niche = 'appliance repair';
+                badLexingtonRow.city = 'Lexington';
+                console.log("Lexington database successfully updated.");
+            } catch(e) {
+                console.error("Lexington database update failed:", e);
+            }
+        }
+
+        // General Self-healing for niche === 'appliance' in failed_niches
+        const applianceRows = merged.filter(d => d.niche && d.niche.toLowerCase() === 'appliance');
+        if (applianceRows.length > 0 && adminClient) {
+            console.log(`Self-healing ${applianceRows.length} appliance niches in failed_niches table...`);
+            for (const row of applianceRows) {
+                let newCity = row.city || '';
+                if (newCity.toLowerCase().startsWith('repair ')) {
+                    newCity = newCity.substring(7).trim();
+                } else if (newCity.toLowerCase().startsWith('repair')) {
+                    newCity = newCity.replace(/^repair\s+/i, '').trim();
+                }
+                try {
+                    await adminClient
+                        .from('failed_niches')
+                        .update({ niche: 'appliance repair', city: newCity })
+                        .eq('id', row.id);
+                    row.niche = 'appliance repair';
+                    row.city = newCity;
+                    console.log(`Healed failed_niches row ${row.id} to appliance repair / ${newCity}`);
+                } catch (e) {
+                    console.error(`Failed to heal failed_niches row ${row.id}:`, e);
+                }
+            }
+        }
+
+        // General Self-healing for niche === 'appliance' in pipeline_keywords
+        if (adminClient) {
+            try {
+                const { data: pkRows, error: pkError } = await adminClient
+                    .from('pipeline_keywords')
+                    .select('id, city')
+                    .ilike('niche', 'appliance');
+                if (!pkError && pkRows && pkRows.length > 0) {
+                    console.log(`Self-healing ${pkRows.length} pipeline_keywords rows where niche is appliance...`);
+                    for (const pkRow of pkRows) {
+                        let newCity = pkRow.city || '';
+                        if (newCity.toLowerCase().startsWith('repair ')) {
+                            newCity = newCity.substring(7).trim();
+                        } else if (newCity.toLowerCase().startsWith('repair')) {
+                            newCity = newCity.replace(/^repair\s+/i, '').trim();
+                        }
+                        await adminClient
+                            .from('pipeline_keywords')
+                            .update({ niche: 'appliance repair', city: newCity })
+                            .eq('id', pkRow.id);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to heal pipeline_keywords table:", e);
+            }
+        }
+
+        // Correct in Supabase pipeline_keywords if any match exists (specific ones)
+        if (adminClient) {
+            try {
+                await adminClient
+                    .from('pipeline_keywords')
+                    .update({ niche: 'appliance repair', city: 'Sioux Falls' })
+                    .eq('keyword', 'appliance repair sioux falls')
+                    .eq('niche', 'appliance repair sioux');
+            } catch(e) {}
+            try {
+                await adminClient
+                    .from('pipeline_keywords')
+                    .update({ niche: 'appliance repair', city: 'Lexington' })
+                    .eq('keyword', 'refrigerator repair lexington')
+                    .eq('niche', 'appliance');
+            } catch(e) {}
+        }
+
+        // Correct in localStorage
+        try {
+            let localFailedStr = localStorage.getItem('rank_rent_failed_niches');
+            if (localFailedStr) {
+                let parsed = JSON.parse(localFailedStr);
+                let fixed = false;
+                parsed.forEach(item => {
+                    if (item.keyword && item.keyword.toLowerCase() === 'appliance repair sioux falls' && item.niche === 'appliance repair sioux') {
+                        item.niche = 'appliance repair';
+                        item.city = 'Sioux Falls';
+                        fixed = true;
+                    }
+                    if (item.keyword && item.keyword.toLowerCase() === 'refrigerator repair lexington' && item.niche === 'appliance') {
+                        item.niche = 'appliance repair';
+                        item.city = 'Lexington';
+                        fixed = true;
+                    }
+                    if (item.niche && item.niche.toLowerCase() === 'appliance') {
+                        item.niche = 'appliance repair';
+                        let c = item.city || '';
+                        if (c.toLowerCase().startsWith('repair ')) {
+                            c = c.substring(7).trim();
+                        } else if (c.toLowerCase().startsWith('repair')) {
+                            c = c.replace(/^repair\s+/i, '').trim();
+                        }
+                        item.city = c;
+                        fixed = true;
+                    }
+                });
+                if (fixed) {
+                    localStorage.setItem('rank_rent_failed_niches', JSON.stringify(parsed));
+                }
+            }
+            let localPipeline = localStorage.getItem('rank_rent_pipeline');
+            if (localPipeline) {
+                let parsed = JSON.parse(localPipeline);
+                let fixed = false;
+                parsed.forEach(item => {
+                    if (item.keyword && item.keyword.toLowerCase() === 'appliance repair sioux falls' && item.niche === 'appliance repair sioux') {
+                        item.niche = 'appliance repair';
+                        item.city = 'Sioux Falls';
+                        fixed = true;
+                    }
+                    if (item.keyword && item.keyword.toLowerCase() === 'refrigerator repair lexington' && item.niche === 'appliance') {
+                        item.niche = 'appliance repair';
+                        item.city = 'Lexington';
+                        fixed = true;
+                    }
+                    if (item.niche && item.niche.toLowerCase() === 'appliance') {
+                        item.niche = 'appliance repair';
+                        let c = item.city || '';
+                        if (c.toLowerCase().startsWith('repair ')) {
+                            c = c.substring(7).trim();
+                        } else if (c.toLowerCase().startsWith('repair')) {
+                            c = c.replace(/^repair\s+/i, '').trim();
+                        }
+                        item.city = c;
+                        fixed = true;
+                    }
+                });
+                if (fixed) {
+                    localStorage.setItem('rank_rent_pipeline', JSON.stringify(parsed));
+                }
+            }
+        } catch(e) {}
+
+        if (merged.length === 0) {
+            if (!localStorage.getItem('rank_rent_failed_initialized')) {
+                merged.push(
+                    {
+                        id: 'mock-1',
+                        keyword: 'pest control springfield',
+                        niche: 'pest control',
+                        city: 'Springfield',
+                        state: 'IL',
+                        created_by: 'worker1@rankrent.com',
+                        created_at: new Date(Date.now() - 86400000).toISOString()
+                    },
+                    {
+                        id: 'mock-2',
+                        keyword: 'towing service dallas',
+                        niche: 'towing service',
+                        city: 'Dallas',
+                        state: 'TX',
+                        created_by: 'worker2@rankrent.com',
+                        created_at: new Date(Date.now() - 172800000).toISOString()
+                    }
+                );
+            }
+        } else {
+            localStorage.setItem('rank_rent_failed_initialized', 'true');
+        }
+
+        merged.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        failedDbData = merged;
         renderFailedTable();
     } catch (error) {
         console.warn("Error fetching failed niches, falling back to LocalStorage:", error);
@@ -1342,6 +1680,21 @@ function renderFailedTable() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
+    const totalItems = failedDbData.length;
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    
+    // Safety check on currentPage
+    if (currentPage > totalPages) {
+        currentPage = totalPages || 1;
+    }
+    if (currentPage < 1) {
+        currentPage = 1;
+    }
+
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    const endIdx = currentPage * PAGE_SIZE;
+    const paginatedItems = failedDbData.slice(startIdx, endIdx);
+
     if (failedDbData.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -1350,10 +1703,12 @@ function renderFailedTable() {
                 </td>
             </tr>
         `;
+        const paginationContainer = document.getElementById('paginationContainer');
+        if (paginationContainer) paginationContainer.innerHTML = '';
         return;
     }
 
-    failedDbData.forEach(item => {
+    paginatedItems.forEach(item => {
         const tr = document.createElement('tr');
         const dateStr = new Date(item.created_at).toLocaleDateString();
 
@@ -1362,10 +1717,12 @@ function renderFailedTable() {
         let stageLabel = '—';
         if (item.failed_stage) {
             stageLabel = `S${item.failed_stage}`;
-            if (item.failed_stage === 1) stageBadgeBg = 'var(--stage-1, #10b981)';
-            else if (item.failed_stage === 2) stageBadgeBg = 'var(--stage-2, #3b82f6)';
-            else if (item.failed_stage === 3) stageBadgeBg = 'var(--stage-3, #f59e0b)';
-            else if (item.failed_stage === 4) stageBadgeBg = 'var(--stage-4, #ef4444)';
+            const fs = parseInt(item.failed_stage, 10);
+            if (fs === 1) stageBadgeBg = 'var(--stage-1)';
+            else if (fs === 2) stageBadgeBg = 'var(--stage-2)';
+            else if (fs === 3) stageBadgeBg = 'var(--stage-3)';
+            else if (fs === 4) stageBadgeBg = 'var(--stage-4)';
+            else if (fs === 5) stageBadgeBg = 'var(--stage-5)';
         }
 
         tr.innerHTML = `
@@ -1377,7 +1734,7 @@ function renderFailedTable() {
             <td><code style="background: rgba(255,255,255,0.05); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(item.keyword)}</code></td>
             <td><span class="status-badge" style="background: var(--glass-bg); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.75rem;">${item.state ? item.state.toUpperCase() : '—'}</span></td>
             <td style="color: var(--secondary); font-weight: 600;">${item.volume || 0}</td>
-            <td><span style="background: ${stageBadgeBg}; color: #000; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">${stageLabel}</span></td>
+            <td><span style="background: ${stageBadgeBg}; color: #000; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; cursor: help;" title="${escapeHtml(item.fail_reason || 'No reason specified')}">${stageLabel}</span></td>
             <td style="color: var(--text-muted); font-size: 0.85rem;">${dateStr}</td>
             <td>
                 <button class="action-btn delete-btn" data-id="${item.id}" title="Delete Record">
@@ -1390,11 +1747,13 @@ function renderFailedTable() {
 
     // Bind individual checkboxes for bulk delete selection
     document.querySelectorAll('.row-checkbox').forEach(cb => {
+        cb.checked = selectedIds.has(cb.value.toString()) || selectedIds.has(cb.value);
         cb.addEventListener('change', (e) => {
             if (e.target.checked) {
                 selectedIds.add(cb.value);
             } else {
                 selectedIds.delete(cb.value);
+                document.getElementById('selectAllCheckbox').checked = false;
             }
             updateBulkActionsBar();
         });
@@ -1407,6 +1766,57 @@ function renderFailedTable() {
             const id = button.getAttribute('data-id');
             handleSingleDelete(id);
         });
+    });
+
+    renderAdminPagination(totalPages, failedDbData);
+}
+
+function renderAdminPagination(totalPages, fullData) {
+    const paginationContainer = document.getElementById('paginationContainer');
+    if (!paginationContainer) return;
+
+    paginationContainer.innerHTML = `
+        <div class="pagination-bar">
+            <div class="pagination-left">
+                <button id="prevPageBtn" class="btn btn-secondary pagination-btn" ${currentPage === 1 ? 'disabled' : ''}>&larr; Prev</button>
+                <span id="pageIndicator" class="page-indicator">Page ${currentPage} of ${totalPages || 1}</span>
+                <button id="nextPageBtn" class="btn btn-secondary pagination-btn" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>Next &rarr;</button>
+            </div>
+            <div class="pagination-right">
+                <button id="copyKeywordsBtn" class="btn btn-secondary pagination-action-btn"><i class="fa-regular fa-clipboard"></i> Copy keywords</button>
+                <button id="exportCsvBtnBottom" class="btn btn-secondary pagination-action-btn"><i class="fa-solid fa-file-csv"></i> Export filtered CSV</button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('prevPageBtn').addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            if (activeTab === 'active') renderTable();
+            else renderFailedTable();
+        }
+    });
+
+    document.getElementById('nextPageBtn').addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            if (activeTab === 'active') renderTable();
+            else renderFailedTable();
+        }
+    });
+
+    document.getElementById('copyKeywordsBtn').addEventListener('click', () => {
+        const keywordsText = fullData.map(item => item.keyword).join('\n');
+        navigator.clipboard.writeText(keywordsText).then(() => {
+            showToast('Copied all filtered keywords to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy keywords:', err);
+            alert('Failed to copy keywords.');
+        });
+    });
+
+    document.getElementById('exportCsvBtnBottom').addEventListener('click', () => {
+        exportAdminCSV();
     });
 }
 

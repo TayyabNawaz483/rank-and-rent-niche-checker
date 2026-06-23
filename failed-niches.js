@@ -3,6 +3,8 @@ let failedData = [];
 let supabaseClient = null;
 let currentUser = null;
 let userRole = 'worker';
+let currentPage = 1;
+const PAGE_SIZE = 50;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Theme setup
@@ -93,6 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Robust auto-detection logic
+        const words = val.split(/\s+/);
         const lowerWords = words.map(w => w.toLowerCase());
         const serviceIndicators = [
             'repair', 'control', 'dentist', 'dentistry', 'plumber', 'plumbing', 
@@ -181,10 +184,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Filter listeners
-    document.getElementById('searchInput').addEventListener('input', renderTable);
-    document.getElementById('stateFilter').addEventListener('change', renderTable);
-    if(document.getElementById('nicheFilter')) document.getElementById('nicheFilter').addEventListener('change', renderTable);
-    if(document.getElementById('cityFilter')) document.getElementById('cityFilter').addEventListener('change', renderTable);
+    document.getElementById('searchInput').addEventListener('input', () => {
+        currentPage = 1;
+        renderTable();
+    });
+    document.getElementById('stateFilter').addEventListener('change', () => {
+        currentPage = 1;
+        renderTable();
+    });
+    if(document.getElementById('nicheFilter')) {
+        document.getElementById('nicheFilter').addEventListener('change', () => {
+            currentPage = 1;
+            renderTable();
+        });
+    }
+    if(document.getElementById('cityFilter')) {
+        document.getElementById('cityFilter').addEventListener('change', () => {
+            currentPage = 1;
+            renderTable();
+        });
+    }
 
     // Initial data fetch
     await fetchFailedNiches();
@@ -199,21 +218,102 @@ function updateThemeIcon(theme) {
 
 // Fetch list of failed niches
 async function fetchFailedNiches() {
-    try {
-        const { data, error } = await supabaseClient
-            .from('failed_niches')
-            .select('*')
-            .order('created_at', { ascending: false });
+    let remoteFailed = [];
+    let remotePipelineFailed = [];
 
-        if (error) throw error;
-        failedData = data || [];
+    try {
+        if (supabaseClient) {
+            // 1. Fetch from failed_niches
+            try {
+                const { data, error } = await supabaseClient
+                    .from('failed_niches')
+                    .select('*');
+                if (!error && data) {
+                    remoteFailed = data;
+                }
+            } catch (e) {
+                console.warn("Failed to fetch failed_niches table:", e);
+            }
+
+            // 2. Fetch from pipeline_keywords where status is failed
+            try {
+                const { data, error } = await supabaseClient
+                    .from('pipeline_keywords')
+                    .select('*')
+                    .eq('status', 'failed');
+                if (!error && data) {
+                    remotePipelineFailed = data.map(pk => ({
+                        id: pk.id,
+                        keyword: pk.keyword,
+                        niche: pk.niche,
+                        city: pk.city,
+                        state: pk.state,
+                        volume: pk.volume || 0,
+                        failed_stage: pk.stage + 1, // stage check failure is (last completed stage + 1)
+                        fail_reason: 'Failed during pipeline stage check',
+                        created_by: pk.created_by || 'system@rankrent.com',
+                        created_at: pk.checked_at || pk.created_at
+                    }));
+                }
+            } catch (e) {
+                console.warn("Failed to fetch pipeline failed keywords:", e);
+            }
+        }
+
+        // 3. Fetch from localStorage
+        let localFailed = [];
+        try {
+            const local = localStorage.getItem('rank_rent_failed_niches');
+            if (local) {
+                localFailed = JSON.parse(local);
+            }
+        } catch (e) {
+            console.warn("Failed to load local failed niches:", e);
+        }
+
+        // Deduplicate and merge sources: primary failed_niches first, then pipeline failed keywords, then local cache
+        const merged = [];
+        const existingKeys = new Set();
+
+        const addRecord = (item) => {
+            const key = `${(item.keyword || '').toLowerCase()}|${(item.state || '').toLowerCase()}`;
+            if (!existingKeys.has(key)) {
+                // Auto-heal failed_stage for keywords with volume >= 50 that are incorrectly marked as Stage 1 (S1)
+                const fs = parseInt(item.failed_stage, 10);
+                const vol = parseInt(item.volume || 0, 10);
+                if (fs === 1 && vol >= 50) {
+                    const reason = (item.fail_reason || '').toLowerCase();
+                    if (reason.includes('stage 3') || reason.includes('gmb')) {
+                        item.failed_stage = 3;
+                    } else if (reason.includes('stage 4') || reason.includes('traffic') || reason.includes('da')) {
+                        item.failed_stage = 4;
+                    } else if (reason.includes('stage 5') || reason.includes('directory')) {
+                        item.failed_stage = 5;
+                    } else {
+                        item.failed_stage = 2; // Default to Stage 2 KD Check failure
+                    }
+                }
+                merged.push(item);
+                existingKeys.add(key);
+            }
+        };
+
+        remoteFailed.forEach(addRecord);
+        remotePipelineFailed.forEach(addRecord);
+        localFailed.forEach(addRecord);
+
+        if (merged.length > 0) {
+            localStorage.setItem('rank_rent_failed_initialized', 'true');
+        }
+        merged.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        failedData = merged;
 
         // Self-healing database correction block for mismatched niche
         const badRow = failedData.find(d => 
             d.keyword && d.keyword.toLowerCase() === 'appliance repair sioux falls' && 
             d.niche === 'appliance repair sioux'
         );
-        if (badRow) {
+        if (badRow && supabaseClient) {
             console.log("Fixing incorrect failed niche in database...", badRow.id);
             try {
                 await supabaseClient
@@ -228,25 +328,122 @@ async function fetchFailedNiches() {
             }
         }
 
-        // Correct in Supabase pipeline_keywords if any match exists
-        try {
-            await supabaseClient
-                .from('pipeline_keywords')
-                .update({ niche: 'appliance repair', city: 'Sioux Falls' })
-                .eq('keyword', 'appliance repair sioux falls')
-                .eq('niche', 'appliance repair sioux');
-        } catch(e) {}
+        // Self-healing database correction block for mismatched niche (Lexington)
+        const badLexingtonRow = failedData.find(d =>
+            d.keyword && d.keyword.toLowerCase() === 'refrigerator repair lexington' &&
+            d.niche === 'appliance'
+        );
+        if (badLexingtonRow && supabaseClient) {
+            console.log("Fixing incorrect lexington failed niche in database...", badLexingtonRow.id);
+            try {
+                await supabaseClient
+                    .from('failed_niches')
+                    .update({ niche: 'appliance repair', city: 'Lexington' })
+                    .eq('id', badLexingtonRow.id);
+                badLexingtonRow.niche = 'appliance repair';
+                badLexingtonRow.city = 'Lexington';
+                console.log("Lexington database successfully updated.");
+            } catch(e) {
+                console.error("Lexington database update failed:", e);
+            }
+        }
+
+        // General Self-healing for niche === 'appliance' in failed_niches
+        const applianceRows = failedData.filter(d => d.niche && d.niche.toLowerCase() === 'appliance');
+        if (applianceRows.length > 0 && supabaseClient) {
+            console.log(`Self-healing ${applianceRows.length} appliance niches in failed_niches table...`);
+            for (const row of applianceRows) {
+                let newCity = row.city || '';
+                if (newCity.toLowerCase().startsWith('repair ')) {
+                    newCity = newCity.substring(7).trim();
+                } else if (newCity.toLowerCase().startsWith('repair')) {
+                    newCity = newCity.replace(/^repair\s+/i, '').trim();
+                }
+                try {
+                    await supabaseClient
+                        .from('failed_niches')
+                        .update({ niche: 'appliance repair', city: newCity })
+                        .eq('id', row.id);
+                    row.niche = 'appliance repair';
+                    row.city = newCity;
+                    console.log(`Healed failed_niches row ${row.id} to appliance repair / ${newCity}`);
+                } catch (e) {
+                    console.error(`Failed to heal failed_niches row ${row.id}:`, e);
+                }
+            }
+        }
+
+        // General Self-healing for niche === 'appliance' in pipeline_keywords
+        if (supabaseClient) {
+            try {
+                const { data: pkRows, error: pkError } = await supabaseClient
+                    .from('pipeline_keywords')
+                    .select('id, city')
+                    .ilike('niche', 'appliance');
+                if (!pkError && pkRows && pkRows.length > 0) {
+                    console.log(`Self-healing ${pkRows.length} pipeline_keywords rows where niche is appliance...`);
+                    for (const pkRow of pkRows) {
+                        let newCity = pkRow.city || '';
+                        if (newCity.toLowerCase().startsWith('repair ')) {
+                            newCity = newCity.substring(7).trim();
+                        } else if (newCity.toLowerCase().startsWith('repair')) {
+                            newCity = newCity.replace(/^repair\s+/i, '').trim();
+                        }
+                        await supabaseClient
+                            .from('pipeline_keywords')
+                            .update({ niche: 'appliance repair', city: newCity })
+                            .eq('id', pkRow.id);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to heal pipeline_keywords table:", e);
+            }
+        }
+
+        // Correct in Supabase pipeline_keywords if any match exists (specific ones)
+        if (supabaseClient) {
+            try {
+                await supabaseClient
+                    .from('pipeline_keywords')
+                    .update({ niche: 'appliance repair', city: 'Sioux Falls' })
+                    .eq('keyword', 'appliance repair sioux falls')
+                    .eq('niche', 'appliance repair sioux');
+            } catch(e) {}
+            try {
+                await supabaseClient
+                    .from('pipeline_keywords')
+                    .update({ niche: 'appliance repair', city: 'Lexington' })
+                    .eq('keyword', 'refrigerator repair lexington')
+                    .eq('niche', 'appliance');
+            } catch(e) {}
+        }
 
         // Correct in localStorage
         try {
-            let localFailed = localStorage.getItem('rank_rent_failed_niches');
-            if (localFailed) {
-                let parsed = JSON.parse(localFailed);
+            let localFailedStr = localStorage.getItem('rank_rent_failed_niches');
+            if (localFailedStr) {
+                let parsed = JSON.parse(localFailedStr);
                 let fixed = false;
                 parsed.forEach(item => {
                     if (item.keyword && item.keyword.toLowerCase() === 'appliance repair sioux falls' && item.niche === 'appliance repair sioux') {
                         item.niche = 'appliance repair';
                         item.city = 'Sioux Falls';
+                        fixed = true;
+                    }
+                    if (item.keyword && item.keyword.toLowerCase() === 'refrigerator repair lexington' && item.niche === 'appliance') {
+                        item.niche = 'appliance repair';
+                        item.city = 'Lexington';
+                        fixed = true;
+                    }
+                    if (item.niche && item.niche.toLowerCase() === 'appliance') {
+                        item.niche = 'appliance repair';
+                        let c = item.city || '';
+                        if (c.toLowerCase().startsWith('repair ')) {
+                            c = c.substring(7).trim();
+                        } else if (c.toLowerCase().startsWith('repair')) {
+                            c = c.replace(/^repair\s+/i, '').trim();
+                        }
+                        item.city = c;
                         fixed = true;
                     }
                 });
@@ -262,6 +459,22 @@ async function fetchFailedNiches() {
                     if (item.keyword && item.keyword.toLowerCase() === 'appliance repair sioux falls' && item.niche === 'appliance repair sioux') {
                         item.niche = 'appliance repair';
                         item.city = 'Sioux Falls';
+                        fixed = true;
+                    }
+                    if (item.keyword && item.keyword.toLowerCase() === 'refrigerator repair lexington' && item.niche === 'appliance') {
+                        item.niche = 'appliance repair';
+                        item.city = 'Lexington';
+                        fixed = true;
+                    }
+                    if (item.niche && item.niche.toLowerCase() === 'appliance') {
+                        item.niche = 'appliance repair';
+                        let c = item.city || '';
+                        if (c.toLowerCase().startsWith('repair ')) {
+                            c = c.substring(7).trim();
+                        } else if (c.toLowerCase().startsWith('repair')) {
+                            c = c.replace(/^repair\s+/i, '').trim();
+                        }
+                        item.city = c;
                         fixed = true;
                     }
                 });
@@ -282,7 +495,16 @@ async function fetchFailedNiches() {
 // Fallback: load local storage data
 function loadLocalFailedNiches() {
     const local = localStorage.getItem('rank_rent_failed_niches');
-    failedData = local ? JSON.parse(local) : getMockFailedData();
+    if (local) {
+        failedData = JSON.parse(local);
+    } else {
+        if (!localStorage.getItem('rank_rent_failed_initialized')) {
+            failedData = getMockFailedData();
+            localStorage.setItem('rank_rent_failed_initialized', 'true');
+        } else {
+            failedData = [];
+        }
+    }
     populateFilters();
     renderTable();
 }
@@ -374,6 +596,21 @@ function renderTable() {
         return matchesSearch && matchesState && matchesNiche && matchesCity;
     });
 
+    const totalItems = filtered.length;
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    
+    // Safety check on currentPage
+    if (currentPage > totalPages) {
+        currentPage = totalPages || 1;
+    }
+    if (currentPage < 1) {
+        currentPage = 1;
+    }
+
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    const endIdx = currentPage * PAGE_SIZE;
+    const paginatedItems = filtered.slice(startIdx, endIdx);
+
     if (filtered.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -382,10 +619,12 @@ function renderTable() {
                 </td>
             </tr>
         `;
+        const paginationContainer = document.getElementById('paginationContainer');
+        if (paginationContainer) paginationContainer.innerHTML = '';
         return;
     }
 
-    filtered.forEach(item => {
+    paginatedItems.forEach(item => {
         const tr = document.createElement('tr');
         const dateStr = new Date(item.created_at).toLocaleString();
 
@@ -394,10 +633,12 @@ function renderTable() {
         let stageLabel = '—';
         if (item.failed_stage) {
             stageLabel = `S${item.failed_stage}`;
-            if (item.failed_stage === 1) stageBadgeBg = 'var(--stage-1, #10b981)';
-            else if (item.failed_stage === 2) stageBadgeBg = 'var(--stage-2, #3b82f6)';
-            else if (item.failed_stage === 3) stageBadgeBg = 'var(--stage-3, #f59e0b)';
-            else if (item.failed_stage === 4) stageBadgeBg = 'var(--stage-4, #ef4444)';
+            const fs = parseInt(item.failed_stage, 10);
+            if (fs === 1) stageBadgeBg = 'var(--stage-1)';
+            else if (fs === 2) stageBadgeBg = 'var(--stage-2)';
+            else if (fs === 3) stageBadgeBg = 'var(--stage-3)';
+            else if (fs === 4) stageBadgeBg = 'var(--stage-4)';
+            else if (fs === 5) stageBadgeBg = 'var(--stage-5)';
         }
 
         let actionCell = '';
@@ -417,7 +658,7 @@ function renderTable() {
             <td><code style="background: rgba(255,255,255,0.05); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(item.keyword)}</code></td>
             <td><span class="status-badge" style="background: var(--glass-bg); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.75rem;">${item.state ? item.state.toUpperCase() : '—'}</span></td>
             <td style="color: var(--secondary); font-weight: 600;">${item.volume || 0}</td>
-            <td><span style="background: ${stageBadgeBg}; color: #000; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">${stageLabel}</span></td>
+            <td><span style="background: ${stageBadgeBg}; color: #000; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; cursor: help;" title="${escapeHtml(item.fail_reason || 'No reason specified')}">${stageLabel}</span></td>
             <td style="font-size: 0.85rem; color: var(--text-secondary);">${escapeHtml(item.created_by || 'Auto')}</td>
             <td style="color: var(--text-muted); font-size: 0.85rem;">${dateStr}</td>
             ${actionCell}
@@ -436,6 +677,86 @@ function renderTable() {
                     await deleteFailedNiche(id);
                 }
             });
+        });
+    }
+
+    // Render Pagination Controls
+    const paginationContainer = document.getElementById('paginationContainer');
+    if (paginationContainer) {
+        paginationContainer.innerHTML = `
+            <div class="pagination-bar">
+                <div class="pagination-left">
+                    <button id="prevPageBtn" class="btn btn-secondary pagination-btn" ${currentPage === 1 ? 'disabled' : ''}>&larr; Prev</button>
+                    <span id="pageIndicator" class="page-indicator">Page ${currentPage} of ${totalPages || 1}</span>
+                    <button id="nextPageBtn" class="btn btn-secondary pagination-btn" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>Next &rarr;</button>
+                </div>
+                <div class="pagination-right">
+                    <button id="copyKeywordsBtn" class="btn btn-secondary pagination-action-btn"><i class="fa-regular fa-clipboard"></i> Copy keywords</button>
+                    <button id="exportCsvBtn" class="btn btn-secondary pagination-action-btn"><i class="fa-solid fa-file-csv"></i> Export filtered CSV</button>
+                </div>
+            </div>
+        `;
+
+        // Bind pagination button events
+        document.getElementById('prevPageBtn').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+            }
+        });
+
+        document.getElementById('nextPageBtn').addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+            }
+        });
+
+        // Bind copy keywords event
+        document.getElementById('copyKeywordsBtn').addEventListener('click', () => {
+            const keywordsText = filtered.map(item => item.keyword).join('\n');
+            navigator.clipboard.writeText(keywordsText).then(() => {
+                showToast('Copied all filtered keywords to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy keywords:', err);
+                alert('Failed to copy keywords.');
+            });
+        });
+
+        // Bind export filtered CSV event
+        document.getElementById('exportCsvBtn').addEventListener('click', () => {
+            if (filtered.length === 0) {
+                showToast('No records to export.', true);
+                return;
+            }
+
+            const headers = ["Niche", "City", "Keyword", "State", "Volume", "Failed Stage", "Logged By", "Logged At"];
+            const rows = filtered.map(item => [
+                `"${item.niche}"`,
+                `"${item.city || ''}"`,
+                `"${item.keyword}"`,
+                item.state || "",
+                item.volume || 0,
+                item.failed_stage ? `Stage ${item.failed_stage}` : 'Unknown',
+                `"${item.created_by || 'Auto'}"`,
+                new Date(item.created_at).toLocaleDateString()
+            ]);
+
+            const csvContent = [
+                headers.join(","),
+                ...rows.map(r => r.join(","))
+            ].join("\n");
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `failed_niches_filtered_${Date.now()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('Exported filtered CSV successfully!');
         });
     }
 }
@@ -529,12 +850,15 @@ async function deleteFailedNiche(id) {
 
         if (error) throw error;
         
+        localStorage.setItem('rank_rent_failed_initialized', 'true');
         failedData = failedData.filter(item => item.id !== id);
+        saveLocalFailedNiches();
         showToast('Failed niche deleted successfully!');
         renderTable();
     } catch (error) {
         console.warn('Database delete failed, removing from local storage fallback:', error);
         
+        localStorage.setItem('rank_rent_failed_initialized', 'true');
         failedData = failedData.filter(item => item.id !== id);
         saveLocalFailedNiches();
         

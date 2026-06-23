@@ -14,6 +14,8 @@
     let currentUserRole = 'admin'; // default to admin for now — will be set by auth
     let currentUserEmail = 'system@rankrent.com';
     let allPipelineData = [];
+    let failedNichesForCheck = [];
+    let passedNichesForCheck = [];
 
     // ─── Initialization ───
     document.addEventListener('DOMContentLoaded', async () => {
@@ -179,6 +181,8 @@
         initStage4();
         initStage5();
         await loadAllPipelineData();
+        await loadFailedNichesForDuplicateCheck();
+        await loadPassedNichesForDuplicateCheck();
     });
 
     // ─── Supabase Init ───
@@ -282,8 +286,14 @@
                     .order('created_at', { ascending: false });
 
                 if (!error && data) {
-                    allPipelineData = data;
-                    savePipelineData(data);
+                    // Merge Supabase data with local data to prevent losing local-only edits/adds
+                    const localData = getPipelineData();
+                    const dbIds = new Set(data.map(r => r.id));
+                    const localOnly = localData.filter(r => !dbIds.has(r.id));
+                    
+                    allPipelineData = [...data, ...localOnly];
+                    savePipelineData(allPipelineData);
+                    await loadFailedNichesForDuplicateCheck();
                     updateAllViews();
                     return;
                 }
@@ -294,7 +304,52 @@
 
         // Fallback to localStorage
         allPipelineData = getPipelineData();
+        await loadFailedNichesForDuplicateCheck();
         updateAllViews();
+    }
+
+    async function loadFailedNichesForDuplicateCheck() {
+        if (supabase) {
+            try {
+                const { data, error } = await supabase
+                    .from('failed_niches')
+                    .select('*');
+                if (!error && data) {
+                    failedNichesForCheck = data || [];
+                    return;
+                }
+            } catch (e) {
+                console.warn('Supabase failed niches fetch failed for check, using localStorage:', e);
+            }
+        }
+        try {
+            const local = localStorage.getItem('rank_rent_failed_niches');
+            failedNichesForCheck = local ? JSON.parse(local) : [];
+        } catch {
+            failedNichesForCheck = [];
+        }
+    }
+
+    async function loadPassedNichesForDuplicateCheck() {
+        if (supabase) {
+            try {
+                const { data, error } = await supabase
+                    .from('niches')
+                    .select('keyword, state');
+                if (!error && data) {
+                    passedNichesForCheck = data || [];
+                    return;
+                }
+            } catch (e) {
+                console.warn('Supabase niches fetch failed for check, using localStorage:', e);
+            }
+        }
+        try {
+            const local = localStorage.getItem('rank_rent_niches');
+            passedNichesForCheck = local ? JSON.parse(local) : [];
+        } catch {
+            passedNichesForCheck = [];
+        }
     }
 
     async function insertPipelineRows(rows) {
@@ -306,7 +361,11 @@
         // Try Supabase
         if (supabase) {
             try {
-                await supabase.from('pipeline_keywords').insert(rows);
+                const { error } = await supabase.from('pipeline_keywords').insert(rows);
+                if (error) {
+                    console.error('Supabase insert failed:', error);
+                    showToast('Database insert failed: ' + error.message, 'error');
+                }
             } catch (e) {
                 console.warn('Supabase insert failed:', e);
             }
@@ -328,10 +387,14 @@
         // Try Supabase
         if (supabase) {
             try {
-                await supabase
+                const { error } = await supabase
                     .from('pipeline_keywords')
                     .update(updates)
                     .eq('batch_id', batchId);
+                if (error) {
+                    console.error('Supabase update failed:', error);
+                    showToast('Database update failed: ' + error.message, 'error');
+                }
             } catch (e) {
                 console.warn('Supabase update failed:', e);
             }
@@ -352,7 +415,7 @@
 
     function updatePipelineStats() {
         for (let s = 1; s <= 5; s++) {
-            const pending = allPipelineData.filter(r => r.stage === s && r.status === 'pending');
+            const pending = s === 1 ? [] : allPipelineData.filter(r => r.stage === (s - 1) && r.status === 'pending');
             const dot = document.getElementById(`pipelineDot${s}`);
             const count = document.getElementById(`pipelineCount${s}`);
             const tabCount = document.getElementById(`tabCount${s}`);
@@ -375,18 +438,17 @@
         const nicheInput = document.getElementById('stage1Niche');
         const stateSelect = document.getElementById('stage1State');
 
-        textarea.addEventListener('input', () => {
-            parseStage1Preview();
-        });
+        let debounceTimer = null;
+        const triggerPreview = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(parseStage1Preview, 250);
+        };
+
+        textarea.addEventListener('input', triggerPreview);
 
         // Re-render preview when state or niche changes
-        stateSelect.addEventListener('change', () => {
-            parseStage1Preview();
-        });
-
-        nicheInput.addEventListener('input', () => {
-            parseStage1Preview();
-        });
+        stateSelect.addEventListener('change', triggerPreview);
+        nicheInput.addEventListener('input', triggerPreview);
 
         submitBtn.addEventListener('click', () => {
             submitStage1();
@@ -447,11 +509,6 @@
         const niche = nicheInput.value || detectedNiche || '';
         const state = document.getElementById('stage1State').value;
 
-        // Check for keywords already in pipeline (keyword + state match)
-        // Only check when state is selected (same city name can exist in different states)
-        const newKeywords = [];
-        const duplicateKeywords = [];
-
         if (state) {
             const existingKeywords = new Map();
             allPipelineData.forEach(row => {
@@ -461,22 +518,31 @@
                 }
             });
 
-            console.log('🔍 Duplicate check — State:', state, '| Pipeline rows:', allPipelineData.length, '| Existing keys:', existingKeywords.size);
-            console.log('🔍 Sample existing keys:', [...existingKeywords.keys()].slice(0, 5));
-            console.log('🔍 Sample pasted key:', parsed.length > 0 ? `${parsed[0].keyword.toLowerCase()}|${state.toLowerCase()}` : 'none');
+            const failedKeys = new Set(
+                failedNichesForCheck.map(row => `${(row.keyword || '').toLowerCase()}|${(row.state || '').toLowerCase()}`)
+            );
+            const passedKeys = new Set(
+                passedNichesForCheck.map(row => `${(row.keyword || '').toLowerCase()}|${(row.state || '').toLowerCase()}`)
+            );
+
+            console.log('🔍 Duplicate check — State:', state, '| Pipeline rows:', allPipelineData.length, '| Existing keys:', existingKeywords.size, '| Failed keys:', failedKeys.size, '| Passed keys:', passedKeys.size);
 
             parsed.forEach(p => {
                 const key = `${p.keyword.toLowerCase()}|${state.toLowerCase()}`;
                 const existing = existingKeywords.get(key);
                 if (existing) {
-                    duplicateKeywords.push({ ...p, existingStage: existing.stage, existingStatus: existing.status });
+                    duplicateKeywords.push({ ...p, type: 'pipeline', existingStage: existing.stage, existingStatus: existing.status });
+                } else if (passedKeys.has(key)) {
+                    duplicateKeywords.push({ ...p, type: 'passed' });
+                } else if (failedKeys.has(key)) {
+                    duplicateKeywords.push({ ...p, type: 'failed' });
                 } else {
                     newKeywords.push(p);
                 }
             });
 
             if (duplicateKeywords.length > 0) {
-                showToast(`⚠️ ${duplicateKeywords.length} keyword(s) already in pipeline (${state}) — skipped`, 'warning');
+                showToast(`⚠️ ${duplicateKeywords.length} duplicate keyword(s) skipped`, 'warning');
             }
         } else {
             newKeywords.push(...parsed);
@@ -485,7 +551,11 @@
         // Build preview table — show new keywords normally, flag duplicates
         let html = '';
         let rowNum = 0;
-        newKeywords.forEach(p => {
+        const renderNewMax = 100;
+        const renderDupMax = 50;
+
+        const newToRender = newKeywords.slice(0, renderNewMax);
+        newToRender.forEach(p => {
             rowNum++;
             const city = extractCity(p.keyword, niche);
             html += `<tr>
@@ -497,19 +567,48 @@
                 <td style="font-weight: 600;">${p.volume !== null ? p.volume.toLocaleString() : '—'}</td>
             </tr>`;
         });
-        duplicateKeywords.forEach(p => {
+        if (newKeywords.length > renderNewMax) {
+            html += `<tr>
+                <td colspan="6" style="text-align: center; color: var(--text-secondary); font-style: italic; padding: 0.6rem; background: rgba(255,255,255,0.01); border-top: 1px dashed var(--border-color);">
+                    ... and ${newKeywords.length - renderNewMax} more new keywords ...
+                </td>
+            </tr>`;
+        }
+
+        const dupToRender = duplicateKeywords.slice(0, renderDupMax);
+        dupToRender.forEach(p => {
             rowNum++;
             const city = extractCity(p.keyword, niche);
-            const stageLabel = `Stage ${p.existingStage}`;
+            let stageLabel = '';
+            let badgeBg = '#f59e0b';
+            let badgeColor = '#000';
+            if (p.type === 'pipeline') {
+                stageLabel = `Stage ${p.existingStage}`;
+            } else if (p.type === 'passed') {
+                stageLabel = 'PASSED';
+                badgeBg = 'var(--stage-4, #10b981)'; // Green for success
+                badgeColor = '#fff';
+            } else {
+                stageLabel = 'FAILED';
+                badgeBg = 'var(--danger, #ef4444)';
+                badgeColor = '#fff';
+            }
             html += `<tr style="opacity: 0.5; text-decoration: line-through;">
                 <td style="color: var(--text-muted); font-size: 0.75rem;">${rowNum}</td>
                 <td style="font-family: monospace; font-size: 0.82rem;">${escapeHtml(p.keyword)}</td>
                 <td>${escapeHtml(niche)}</td>
                 <td>${escapeHtml(city)}</td>
-                <td><span style="background: #f59e0b; color: #000; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">${stageLabel}</span></td>
+                <td><span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">${stageLabel}</span></td>
                 <td style="font-weight: 600;">${p.volume !== null ? p.volume.toLocaleString() : '—'}</td>
             </tr>`;
         });
+        if (duplicateKeywords.length > renderDupMax) {
+            html += `<tr>
+                <td colspan="6" style="text-align: center; color: var(--text-secondary); font-style: italic; padding: 0.6rem; background: rgba(255,255,255,0.01); border-top: 1px dashed var(--border-color);">
+                    ... and ${duplicateKeywords.length - renderDupMax} more skipped duplicates ...
+                </td>
+            </tr>`;
+        }
 
         previewBody.innerHTML = html;
         kwCount.textContent = `${newKeywords.length} new` + (duplicateKeywords.length > 0 ? `, ${duplicateKeywords.length} skipped` : '');
@@ -608,10 +707,32 @@
         }
         const lower = keyword.toLowerCase();
         const nicheL = niche.toLowerCase();
+        let city = '';
         if (lower.startsWith(nicheL)) {
-            return keyword.substring(niche.length).trim();
+            city = keyword.substring(niche.length).trim();
+        } else {
+            // Fallback: If keyword doesn't start with the custom niche, use the auto-splitter to find the city
+            city = splitKeywordIntoNicheAndCity(keyword).city;
         }
-        return keyword;
+
+        // Clean up service indicators at the start of the extracted city
+        // E.g. "repair sioux falls" -> "sioux falls"
+        if (city) {
+            const serviceIndicators = [
+                'repair', 'control', 'dentist', 'dentistry', 'plumber', 'plumbing', 
+                'roofing', 'roof', 'concrete', 'removal', 'towing', 'cleaning', 
+                'landscaping', 'service', 'services', 'contractors', 'contractor', 
+                'installation', 'care', 'electrician', 'painter', 'painting', 
+                'mover', 'movers', 'hvac', 'attorney', 'lawyer', 'towing', 'tow',
+                'damage', 'restoration', 'cleanup', 'detoxing'
+            ];
+            let cityWords = city.trim().split(/\s+/);
+            while (cityWords.length > 1 && serviceIndicators.includes(cityWords[0].toLowerCase())) {
+                cityWords.shift();
+            }
+            city = cityWords.join(' ');
+        }
+        return city;
     }
 
     async function submitStage1() {
@@ -679,6 +800,7 @@
                     volume: p.volume || 0,
                     failed_stage: 1,
                     fail_reason: `Volume too low (${p.volume} < 50)`,
+                    created_by: currentUserEmail,
                     created_at: now
                 };
             });
@@ -734,9 +856,6 @@
                     <div class="history-niche">${escapeHtml(batch.niche)}</div>
                     <div class="history-meta">${batch.rows.length} keywords · ${date}</div>
                 </div>
-                <span class="group-badge ${batch.status === 'checked' ? 'checked-badge' : 'pending-badge'}">
-                    ${batch.status === 'checked' ? '✓' : '<i class="fa-solid fa-hourglass-half"></i>'}
-                </span>
             </div>`;
         });
 
@@ -771,15 +890,63 @@
         }
     }
 
+    function groupFailedNiches(rows, stageNum) {
+        const filtered = rows.filter(r => r.failed_stage === stageNum);
+        const groups = {};
+        filtered.forEach(r => {
+            const timeKey = r.created_at || '';
+            const key = `${(r.niche || '').toLowerCase()}|${(r.state || '').toLowerCase()}|${timeKey}`;
+            if (!groups[key]) {
+                groups[key] = {
+                    batchId: 'failed-' + timeKey.replace(/[^a-zA-Z0-9]/g, '-') + '-' + (r.niche || '').replace(/[^a-zA-Z0-9]/g, '-'),
+                    niche: r.niche,
+                    state: r.state || '',
+                    status: 'failed',
+                    checkedAt: r.created_at,
+                    rows: []
+                };
+            }
+            groups[key].rows.push({
+                id: r.id,
+                keyword: r.keyword,
+                niche: r.niche,
+                city: r.city,
+                state: r.state,
+                volume: r.volume,
+                status: 'failed',
+                created_at: r.created_at
+            });
+        });
+        return Object.values(groups);
+    }
+
     function updateStageView(stageNum) {
         const prevStage = stageNum - 1;
 
         // Get pending groups from previous stage
         const pendingData = allPipelineData.filter(r => r.stage === prevStage && r.status === 'pending');
-        const checkedData = allPipelineData.filter(r => r.stage === prevStage && r.status === 'checked');
+        const checkedData = allPipelineData.filter(r => r.stage === prevStage && (r.status === 'checked' || r.status === 'failed'));
 
         const pendingBatches = groupByBatch(pendingData);
         const checkedBatches = groupByBatch(checkedData);
+        const stageFailedGroups = groupFailedNiches(failedNichesForCheck, stageNum);
+
+        // Merge checked batches and failed batches
+        const checkedMap = {};
+        checkedBatches.forEach(b => {
+            const key = `${b.niche.toLowerCase()}|${(b.state || '').toLowerCase()}`;
+            checkedMap[key] = b;
+        });
+        stageFailedGroups.forEach(fb => {
+            const key = `${fb.niche.toLowerCase()}|${(fb.state || '').toLowerCase()}`;
+            checkedMap[key] = fb;
+        });
+
+        const combinedCheckedBatches = Object.values(checkedMap).sort((a, b) => {
+            const dateA = a.rows && a.rows[0] ? new Date(a.rows[0].created_at) : new Date(0);
+            const dateB = b.rows && b.rows[0] ? new Date(b.rows[0].created_at) : new Date(0);
+            return dateB - dateA;
+        });
 
         // Update header dynamic pending groups counter
         const pendingTitleEl = document.getElementById(`stage${stageNum}PendingTitle`);
@@ -813,10 +980,10 @@
         // Render checked groups
         const checkedContainer = document.getElementById(`stage${stageNum}CheckedGroups`);
         if (checkedContainer) {
-            if (checkedBatches.length === 0) {
+            if (combinedCheckedBatches.length === 0) {
                 checkedContainer.innerHTML = `<p style="font-size: 0.8rem; color: var(--text-muted); padding: 0.5rem 0;">No checked groups yet</p>`;
             } else {
-                checkedContainer.innerHTML = checkedBatches.map(batch =>
+                checkedContainer.innerHTML = combinedCheckedBatches.map(batch =>
                     renderBatchGroup(batch, 'checked', stageNum)
                 ).join('');
                 attachBatchEvents(checkedContainer);
@@ -894,13 +1061,8 @@
             }
         }
 
-        // Recheck button for checked groups
+        // Recheck button for checked groups - removed per user request
         let recheckHtml = '';
-        if (isChecked) {
-            recheckHtml = `<button class="recheck-btn" data-batch-id="${batch.batchId}" data-stage="${currentStage}">
-                <i class="fa-solid fa-rotate-right"></i> Re-check
-            </button>`;
-        }
 
         // Fail group button for pending groups
         let failGroupBtn = '';
@@ -919,7 +1081,19 @@
 
         const titlePrefix = index ? `Group #${index}: ` : '';
 
-        return `<div class="batch-group ${type}">
+        let badgeClass = 'pending-badge';
+        let badgeLabel = 'PENDING';
+        if (isChecked) {
+            if (batch.status === 'failed') {
+                badgeClass = 'failed-badge';
+                badgeLabel = 'FAILED';
+            } else {
+                badgeClass = 'checked-badge';
+                badgeLabel = 'CHECKED';
+            }
+        }
+        const failedClass = batch.status === 'failed' ? 'failed' : '';
+        return `<div class="batch-group ${type} ${failedClass}">
             <div class="batch-group-header" data-toggle="batch-body-${batch.batchId}">
                 <div class="group-title">
                     <i class="fa-solid fa-folder${isChecked ? '-open' : ''}"></i>
@@ -929,7 +1103,7 @@
                 </div>
                 <div class="group-meta">
                     ${checkedInfo}
-                    <span class="group-badge ${isChecked ? 'checked-badge' : 'pending-badge'}">${isChecked ? 'CHECKED' : 'PENDING'}</span>
+                    <span class="group-badge ${badgeClass}">${badgeLabel}</span>
                     ${failGroupBtn}
                     ${recheckHtml}
                     <span style="font-size: 0.75rem;">${date}</span>
@@ -1514,6 +1688,7 @@
                 volume: r.volume || 0,
                 failed_stage: stageNum,
                 fail_reason: `Did not pass Stage ${stageNum} check`,
+                created_by: currentUserEmail,
                 created_at: now
             }));
             await saveFailedNiches(failedRows);

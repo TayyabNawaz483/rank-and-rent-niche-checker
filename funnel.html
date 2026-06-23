@@ -45,10 +45,10 @@
 
         <!-- Pipeline Progress Bar -->
         <div class="pipeline-bar" id="pipelineBar">
-            <div class="pipeline-stage s1 has-pending">
-                <div class="pipeline-stage-dot" id="pipelineDot1">0</div>
+            <div class="pipeline-stage s1">
+                <div class="pipeline-stage-dot" id="pipelineDot1" style="display: none;">0</div>
                 <span class="pipeline-stage-label">Keyword Generation</span>
-                <span class="pipeline-stage-count" id="pipelineCount1">0 pending</span>
+                <span class="pipeline-stage-count" id="pipelineCount1" style="display: none;">0 pending</span>
             </div>
             <div class="pipeline-connector"></div>
             <div class="pipeline-stage s2">
@@ -81,7 +81,7 @@
             <button class="funnel-tab s1 active" data-stage="1">
                 <span class="tab-dot"></span>
                 Keyword Generation
-                <span class="tab-count" id="tabCount1">0</span>
+                <span class="tab-count" id="tabCount1" style="display: none;">0</span>
             </button>
             <button class="funnel-tab s2" data-stage="2">
                 <span class="tab-dot"></span>
