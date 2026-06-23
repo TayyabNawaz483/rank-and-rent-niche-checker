@@ -1138,7 +1138,7 @@
         // Recheck button for checked/failed groups
         let recheckHtml = '';
         if (isChecked) {
-            recheckHtml = `<button class="recheck-btn" data-batch-id="${batch.batchId}" title="Move Group back to Pending">
+            recheckHtml = `<button class="recheck-btn" data-batch-id="${batch.batchId}" data-stage="${currentStage}" title="Move Group back to Pending">
                 <i class="fa-solid fa-rotate-left"></i> Recheck
             </button>`;
         }
