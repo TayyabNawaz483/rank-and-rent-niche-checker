@@ -464,6 +464,7 @@
         const nicheLabel = document.getElementById('stage1NicheLabel');
         const nicheInput = document.getElementById('stage1Niche');
         const submitBtn = document.getElementById('stage1SubmitBtn');
+        const state = document.getElementById('stage1State').value;
 
         const newKeywords = [];
         const duplicateKeywords = [];
@@ -474,6 +475,14 @@
             return;
         }
 
+        // ── Mandatory State Check ──
+        if (!state) {
+            previewContainer.style.display = 'none';
+            submitBtn.disabled = true;
+            showToast('⚠️ Please select a State before pasting keywords', 'warning');
+            return;
+        }
+
         const lines = raw.split('\n').filter(l => l.trim());
         if (lines.length === 0) {
             previewContainer.style.display = 'none';
@@ -481,28 +490,44 @@
             return;
         }
 
-        // Parse each line: keyword [TAB/SPACE] volume
+        // ── Parse each line: format is always NICHE+CITY VOLUME ──
+        // Volume is mandatory (even 0). Last pure-digit token = volume.
+        let missingVolumeCount = 0;
         let parsed = lines.map(line => {
             let keyword = line.trim();
             let volume = null;
             
-            // Try to split by tab first
+            // Strategy 1: Tab-separated (highest priority, e.g. from spreadsheets)
             if (keyword.includes('\t')) {
                 const parts = keyword.split('\t');
                 keyword = parts[0].trim();
-                volume = parseInt(parts[parts.length - 1].replace(/,/g, '').trim());
+                const rawVol = parts[parts.length - 1].replace(/,/g, '').trim();
+                if (/^\d+$/.test(rawVol)) {
+                    volume = parseInt(rawVol);
+                }
             } else {
-                // Try to extract a number at the end of the string
-                const match = keyword.match(/^(.*?)\s+([\d,]+)$/);
-                if (match) {
-                    keyword = match[1].trim();
-                    volume = parseInt(match[2].replace(/,/g, ''));
+                // Strategy 2: Space-separated — last token must be pure digits
+                const tokens = keyword.split(/\s+/);
+                if (tokens.length >= 2) {
+                    const lastToken = tokens[tokens.length - 1];
+                    if (/^\d{1,6}$/.test(lastToken)) {
+                        volume = parseInt(lastToken);
+                        keyword = tokens.slice(0, -1).join(' ');
+                    }
                 }
             }
+
+            if (volume === null) missingVolumeCount++;
             return { keyword, volume: isNaN(volume) ? null : volume };
         }).filter(p => p.keyword);
 
-        // Remove duplicates (case-insensitive, keep first occurrence)
+        // ── Mandatory Volume Check ──
+        if (missingVolumeCount > 0) {
+            showToast(`⚠️ ${missingVolumeCount} keyword(s) have no volume. Every keyword must include volume (even 0).`, 'error');
+            // Show preview but block submit
+        }
+
+        // Remove duplicates within paste (case-insensitive, keep first occurrence)
         const seen = new Set();
         const beforeCount = parsed.length;
         parsed = parsed.filter(p => {
@@ -516,52 +541,48 @@
             showToast(`⚠️ ${dupsRemoved} duplicate keyword(s) removed`, 'warning');
         }
 
-        // Auto-detect niche (common prefix) — always update on new paste
+        // Auto-detect niche (frequency-based) — always update on new paste
         const detectedNiche = autoDetectNiche(parsed.map(p => p.keyword));
         if (detectedNiche) {
             nicheInput.value = detectedNiche;
         }
 
         const niche = nicheInput.value || detectedNiche || '';
-        const state = document.getElementById('stage1State').value;
 
-        if (state) {
-            const existingKeywords = new Map();
-            allPipelineData.forEach(row => {
-                const key = `${row.keyword.toLowerCase()}|${(row.state || '').toLowerCase()}`;
-                if (!existingKeywords.has(key) || row.stage > existingKeywords.get(key).stage) {
-                    existingKeywords.set(key, { stage: row.stage, status: row.status });
-                }
-            });
-
-            const failedKeys = new Set(
-                failedNichesForCheck.map(row => `${(row.keyword || '').toLowerCase()}|${(row.state || '').toLowerCase()}`)
-            );
-            const passedKeys = new Set(
-                passedNichesForCheck.map(row => `${(row.keyword || '').toLowerCase()}|${(row.state || '').toLowerCase()}`)
-            );
-
-            console.log('🔍 Duplicate check — State:', state, '| Pipeline rows:', allPipelineData.length, '| Existing keys:', existingKeywords.size, '| Failed keys:', failedKeys.size, '| Passed keys:', passedKeys.size);
-
-            parsed.forEach(p => {
-                const key = `${p.keyword.toLowerCase()}|${state.toLowerCase()}`;
-                const existing = existingKeywords.get(key);
-                if (existing) {
-                    duplicateKeywords.push({ ...p, type: 'pipeline', existingStage: existing.stage, existingStatus: existing.status });
-                } else if (passedKeys.has(key)) {
-                    duplicateKeywords.push({ ...p, type: 'passed' });
-                } else if (failedKeys.has(key)) {
-                    duplicateKeywords.push({ ...p, type: 'failed' });
-                } else {
-                    newKeywords.push(p);
-                }
-            });
-
-            if (duplicateKeywords.length > 0) {
-                showToast(`⚠️ ${duplicateKeywords.length} duplicate keyword(s) skipped`, 'warning');
+        // ── Duplication Check (always runs — state is mandatory) ──
+        const existingKeywords = new Map();
+        allPipelineData.forEach(row => {
+            const key = `${(row.keyword || '').toLowerCase()}|${(row.state || '').toLowerCase()}`;
+            if (!existingKeywords.has(key) || row.stage > existingKeywords.get(key).stage) {
+                existingKeywords.set(key, { stage: row.stage, status: row.status });
             }
-        } else {
-            newKeywords.push(...parsed);
+        });
+
+        const failedKeys = new Set(
+            failedNichesForCheck.map(row => `${(row.keyword || '').toLowerCase()}|${(row.state || '').toLowerCase()}`)
+        );
+        const passedKeys = new Set(
+            passedNichesForCheck.map(row => `${(row.keyword || '').toLowerCase()}|${(row.state || '').toLowerCase()}`)
+        );
+
+        console.log('🔍 Duplicate check — State:', state, '| Pipeline rows:', allPipelineData.length, '| Existing keys:', existingKeywords.size, '| Failed keys:', failedKeys.size, '| Passed keys:', passedKeys.size);
+
+        parsed.forEach(p => {
+            const key = `${p.keyword.toLowerCase()}|${state.toLowerCase()}`;
+            const existing = existingKeywords.get(key);
+            if (existing) {
+                duplicateKeywords.push({ ...p, type: 'pipeline', existingStage: existing.stage, existingStatus: existing.status });
+            } else if (passedKeys.has(key)) {
+                duplicateKeywords.push({ ...p, type: 'passed' });
+            } else if (failedKeys.has(key)) {
+                duplicateKeywords.push({ ...p, type: 'failed' });
+            } else {
+                newKeywords.push(p);
+            }
+        });
+
+        if (duplicateKeywords.length > 0) {
+            showToast(`⚠️ ${duplicateKeywords.length} duplicate keyword(s) skipped`, 'warning');
         }
 
         // Build preview table — show new keywords normally, flag duplicates
@@ -630,7 +651,9 @@
         kwCount.textContent = `${newKeywords.length} new` + (duplicateKeywords.length > 0 ? `, ${duplicateKeywords.length} skipped` : '');
         nicheLabel.textContent = niche || '—';
         previewContainer.style.display = 'block';
-        submitBtn.disabled = newKeywords.length === 0;
+        // Block submit if: no new keywords, OR any keyword has no volume
+        const hasNoVolumeKeywords = newKeywords.some(p => p.volume === null || p.volume === undefined);
+        submitBtn.disabled = newKeywords.length === 0 || hasNoVolumeKeywords;
 
         // Store only new keywords for submission
         window._stage1NewKeywords = newKeywords;
@@ -700,21 +723,38 @@
             return splitKeywordIntoNicheAndCity(keywords[0]).niche;
         }
 
-        // Find common prefix words
-        const wordArrays = keywords.map(k => k.toLowerCase().split(' '));
-        const minLen = Math.min(...wordArrays.map(a => a.length));
-        let commonWords = [];
+        // ── Frequency-based niche detection ──
+        // Sample up to 50 keywords for performance with large datasets
+        const sample = keywords.length > 50 ? keywords.slice(0, 50) : keywords;
+        const sampleSize = sample.length;
+        const threshold = 0.75; // prefix must appear in 75%+ of keywords
 
-        for (let i = 0; i < minLen - 1; i++) {
-            const word = wordArrays[0][i];
-            if (wordArrays.every(arr => arr[i] === word)) {
-                commonWords.push(word);
-            } else {
-                break;
+        // Count frequency of 1-word, 2-word, 3-word, 4-word prefixes
+        const prefixCounts = new Map();
+        sample.forEach(kw => {
+            const words = kw.toLowerCase().split(/\s+/);
+            // Generate prefixes of length 1 to min(words.length - 1, 4)
+            const maxPrefixLen = Math.min(words.length - 1, 4);
+            for (let len = 1; len <= maxPrefixLen; len++) {
+                const prefix = words.slice(0, len).join(' ');
+                prefixCounts.set(prefix, (prefixCounts.get(prefix) || 0) + 1);
+            }
+        });
+
+        // Find the longest prefix that meets the threshold
+        let bestNiche = '';
+        for (const [prefix, count] of prefixCounts) {
+            const ratio = count / sampleSize;
+            if (ratio >= threshold) {
+                // Prefer longer prefixes (more specific niche)
+                if (prefix.split(/\s+/).length > bestNiche.split(/\s+/).length ||
+                    (prefix.split(/\s+/).length === bestNiche.split(/\s+/).length && count > (prefixCounts.get(bestNiche) || 0))) {
+                    bestNiche = prefix;
+                }
             }
         }
 
-        return commonWords.join(' ');
+        return bestNiche;
     }
 
     function extractCity(keyword, niche) {
@@ -1194,7 +1234,7 @@
         });
     }
 
-    function showCustomConfirm(title, message, confirmText = 'Yes, Fail Group') {
+    function showCustomConfirm(title, message, confirmText = 'Yes, Fail Group', requireWritten = false) {
         return new Promise((resolve) => {
             const overlay = document.createElement('div');
             overlay.className = 'custom-confirm-overlay';
@@ -1272,6 +1312,39 @@
                 margin: 0;
             `;
 
+            let confirmInput = null;
+            const inputContainer = document.createElement('div');
+            if (requireWritten) {
+                inputContainer.style.cssText = `
+                    margin: 1rem 0 0.5rem 0;
+                    text-align: left;
+                `;
+                
+                const label = document.createElement('label');
+                label.innerHTML = `Type <span style="color: var(--danger); font-weight: 800;">DELETE</span> to confirm:`;
+                label.style.cssText = `
+                    font-size: 0.8rem;
+                    color: var(--text-secondary);
+                    display: block;
+                    margin-bottom: 0.5rem;
+                    font-weight: 600;
+                `;
+                
+                confirmInput = document.createElement('input');
+                confirmInput.type = 'text';
+                confirmInput.placeholder = 'DELETE';
+                confirmInput.className = 'form-input';
+                confirmInput.autocomplete = 'off';
+                confirmInput.style.cssText = `
+                    width: 100%;
+                    border-color: var(--border-color);
+                    text-transform: uppercase;
+                `;
+                
+                inputContainer.appendChild(label);
+                inputContainer.appendChild(confirmInput);
+            }
+
             const footer = document.createElement('div');
             footer.style.cssText = `
                 display: flex;
@@ -1300,11 +1373,25 @@
                 font-weight: 600;
             `;
 
+            if (requireWritten) {
+                confirmBtn.disabled = true;
+                confirmBtn.style.opacity = '0.5';
+                confirmBtn.style.cursor = 'not-allowed';
+                
+                confirmInput.addEventListener('input', () => {
+                    const isMatch = confirmInput.value.trim().toUpperCase() === 'DELETE';
+                    confirmBtn.disabled = !isMatch;
+                    confirmBtn.style.opacity = isMatch ? '1' : '0.5';
+                    confirmBtn.style.cursor = isMatch ? 'pointer' : 'not-allowed';
+                });
+            }
+
             footer.appendChild(cancelBtn);
             footer.appendChild(confirmBtn);
 
             container.appendChild(header);
             container.appendChild(msgEl);
+            if (requireWritten) container.appendChild(inputContainer);
             container.appendChild(footer);
             overlay.appendChild(container);
             document.body.appendChild(overlay);
@@ -1313,6 +1400,7 @@
             requestAnimationFrame(() => {
                 overlay.style.opacity = '1';
                 container.style.transform = 'translateY(0)';
+                if (requireWritten) setTimeout(() => confirmInput.focus(), 100);
             });
 
             function closeConfirm(value) {
@@ -1396,7 +1484,8 @@
         const confirmed = await showCustomConfirm(
             `Delete "${nicheName}"?`, 
             `Are you sure you want to completely DELETE the entire group "${nicheName}"? This will permanently remove all ${batchRows.length} keywords from the pipeline. This action CANNOT be undone.`,
-            'Yes, Delete Group'
+            'Yes, Delete Group',
+            true
         );
         
         if (!confirmed) {
