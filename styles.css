@@ -3044,7 +3044,7 @@ select.filter-input option:disabled,
 }
 
 /* Fail Group Button */
-.fail-group-btn {
+.fail-group-btn, .delete-group-btn {
     background: rgba(239, 68, 68, 0.1);
     color: var(--danger);
     border: 1px solid rgba(239, 68, 68, 0.2);
@@ -3060,14 +3060,14 @@ select.filter-input option:disabled,
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.fail-group-btn:hover {
+.fail-group-btn:hover, .delete-group-btn:hover {
     background: var(--danger-bg);
     border-color: var(--danger-border);
     color: var(--text-primary);
     transform: translateY(-1px);
 }
 
-.fail-group-btn:active {
+.fail-group-btn:active, .delete-group-btn:active {
     transform: translateY(0);
 }
 

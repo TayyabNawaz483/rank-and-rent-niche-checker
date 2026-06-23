@@ -157,6 +157,35 @@ function setupAdminListeners() {
     document.getElementById('bulkDeleteBtn').addEventListener('click', handleBulkDelete);
     document.getElementById('exportCsvBtn').addEventListener('click', exportAdminCSV);
 
+    const clearAllDbBtn = document.getElementById('clearAllDbBtn');
+    if (clearAllDbBtn) {
+        clearAllDbBtn.addEventListener('click', async () => {
+            const confirmed = await showDeleteConfirm('Are you sure you want to completely WIPE the pipeline and all databases? This will delete all pending keywords, failed niches, and evaluated niches for a fresh start. This action CANNOT be undone.', true);
+            if (confirmed) {
+                try {
+                    // Clear Local Storage
+                    localStorage.removeItem('funnel_pipeline_data');
+                    localStorage.removeItem('funnel_failed_niches');
+                    localStorage.removeItem('rank_rent_niches');
+                    localStorage.removeItem('rank_rent_initialized');
+                    
+                    // Clear Supabase
+                    if (adminClient) {
+                        await adminClient.from('pipeline_keywords').delete().neq('keyword', '');
+                        await adminClient.from('failed_niches').delete().neq('keyword', '');
+                        await adminClient.from('niches').delete().neq('keyword', '');
+                    }
+                    
+                    alert('Database and Pipeline completely wiped. Fresh start ready!');
+                    window.location.reload();
+                } catch (e) {
+                    console.error('Failed to clear database', e);
+                    alert('Failed to clear database: ' + e.message);
+                }
+            }
+        });
+    }
+
     // Initialize Add Niche form selectors
     initModalSelectors();
 

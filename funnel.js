@@ -481,11 +481,24 @@
             return;
         }
 
-        // Parse each line: keyword [TAB] volume
+        // Parse each line: keyword [TAB/SPACE] volume
         let parsed = lines.map(line => {
-            const parts = line.split('\t');
-            const keyword = parts[0].trim();
-            const volume = parts.length > 1 ? parseInt(parts[parts.length - 1].trim()) : null;
+            let keyword = line.trim();
+            let volume = null;
+            
+            // Try to split by tab first
+            if (keyword.includes('\t')) {
+                const parts = keyword.split('\t');
+                keyword = parts[0].trim();
+                volume = parseInt(parts[parts.length - 1].replace(/,/g, '').trim());
+            } else {
+                // Try to extract a number at the end of the string
+                const match = keyword.match(/^(.*?)\s+([\d,]+)$/);
+                if (match) {
+                    keyword = match[1].trim();
+                    volume = parseInt(match[2].replace(/,/g, ''));
+                }
+            }
             return { keyword, volume: isNaN(volume) ? null : volume };
         }).filter(p => p.keyword);
 
@@ -1067,11 +1080,14 @@
         // Recheck button for checked groups - removed per user request
         let recheckHtml = '';
 
-        // Fail group button for pending groups
-        let failGroupBtn = '';
+        // Fail & Delete group buttons
+        let actionBtns = '';
         if (!isChecked) {
-            failGroupBtn = `<button class="fail-group-btn" data-batch-id="${batch.batchId}" data-stage="${currentStage}" title="Fail Entire Group">
+            actionBtns = `<button class="fail-group-btn" data-batch-id="${batch.batchId}" data-stage="${currentStage}" title="Fail Entire Group">
                 <i class="fa-solid fa-circle-xmark"></i> Fail Group
+            </button>
+            <button class="delete-group-btn" data-batch-id="${batch.batchId}" title="Delete Entire Group">
+                <i class="fa-solid fa-trash"></i> Delete Group
             </button>`;
         }
 
@@ -1107,7 +1123,7 @@
                 <div class="group-meta">
                     ${checkedInfo}
                     <span class="group-badge ${badgeClass}">${badgeLabel}</span>
-                    ${failGroupBtn}
+                    ${actionBtns}
                     ${recheckHtml}
                     <span style="font-size: 0.75rem;">${date}</span>
                     <i class="fa-solid fa-chevron-down batch-group-chevron"></i>
@@ -1167,9 +1183,18 @@
                 await failEntireGroup(batchId, stage);
             });
         });
+
+        // Delete group buttons
+        container.querySelectorAll('.delete-group-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const batchId = btn.dataset.batchId;
+                await deleteEntireGroup(batchId);
+            });
+        });
     }
 
-    function showCustomConfirm(title, message) {
+    function showCustomConfirm(title, message, confirmText = 'Yes, Fail Group') {
         return new Promise((resolve) => {
             const overlay = document.createElement('div');
             overlay.className = 'custom-confirm-overlay';
@@ -1265,7 +1290,7 @@
 
             const confirmBtn = document.createElement('button');
             confirmBtn.className = 'btn';
-            confirmBtn.textContent = 'Yes, Fail Group';
+            confirmBtn.textContent = confirmText;
             confirmBtn.style.cssText = `
                 background: var(--danger);
                 color: white;
@@ -1353,6 +1378,49 @@
         } catch (err) {
             console.error('Error failing entire group:', err);
             showToast('Failed to mark group as failed', 'error');
+        }
+
+        // 3. Update the view
+        await loadAllPipelineData();
+    }
+
+    async function deleteEntireGroup(batchId) {
+        const batchRows = allPipelineData.filter(r => r.batch_id === batchId);
+        if (batchRows.length === 0) {
+            showToast('No keywords found in this group', 'error');
+            return;
+        }
+
+        const nicheName = batchRows[0].niche;
+        
+        const confirmed = await showCustomConfirm(
+            `Delete "${nicheName}"?`, 
+            `Are you sure you want to completely DELETE the entire group "${nicheName}"? This will permanently remove all ${batchRows.length} keywords from the pipeline. This action CANNOT be undone.`,
+            'Yes, Delete Group'
+        );
+        
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            // 1. Remove from Supabase
+            if (supabase) {
+                const { error } = await supabase.from('pipeline_keywords').delete().eq('batch_id', batchId);
+                if (error) throw error;
+            }
+            
+            // 2. Remove from LocalStorage & memory
+            const data = getPipelineData();
+            const updated = data.filter(r => r.batch_id !== batchId);
+            savePipelineData(updated);
+
+            showToast(`Deleted entire group "${nicheName}"`, 'success');
+        } catch (err) {
+            console.error('Error deleting entire group:', err);
+            showToast('Failed to delete group from database: ' + (err.message || 'Unknown error'), 'error');
+            // If DB delete fails, don't update local view so it stays in sync
+            return;
         }
 
         // 3. Update the view
