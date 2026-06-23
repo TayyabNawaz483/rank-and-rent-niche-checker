@@ -61,6 +61,37 @@
             </div>
         </div>
 
+        <!-- Stats Row -->
+        <section class="stats-grid" style="margin-bottom: 2rem;">
+            <div class="stat-card total" style="border-left: 4px solid var(--danger);">
+                <div class="stat-icon-wrapper" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">
+                    <i class="fa-solid fa-triangle-exclamation fa-lg"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Failed Niches</span>
+                    <span class="stat-value" id="statFailedTotal">0</span>
+                </div>
+            </div>
+            <div class="stat-card states" style="border-left: 4px solid var(--warning);">
+                <div class="stat-icon-wrapper" style="background: rgba(245, 158, 11, 0.1); color: var(--warning);">
+                    <i class="fa-solid fa-map-location-dot fa-lg"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">States Affected</span>
+                    <span class="stat-value" id="statFailedStates">0</span>
+                </div>
+            </div>
+            <div class="stat-card volume" style="border-left: 4px solid var(--primary);">
+                <div class="stat-icon-wrapper" style="background: rgba(59, 130, 246, 0.1); color: var(--primary);">
+                    <i class="fa-solid fa-chart-line fa-lg"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Volume Lost</span>
+                    <span class="stat-value" id="statFailedVolume">0</span>
+                </div>
+            </div>
+        </section>
+
         <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-md);">
             <!-- Filter Bar (TOP) -->
             <div class="failed-niches-filter-bar" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">

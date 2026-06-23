@@ -575,6 +575,30 @@ function renderTable() {
     const tbody = document.getElementById('failedTableBody');
     if (!tbody) return;
 
+    // Update Stats counters on top
+    const total = failedData.length;
+    const uniqueStates = new Set(
+        failedData
+            .map(item => item.state ? item.state.trim().toUpperCase() : '')
+            .filter(Boolean)
+    );
+    const totalVolume = failedData.reduce((sum, item) => sum + (parseInt(item.volume) || 0), 0);
+
+    const totalEl = document.getElementById('statFailedTotal');
+    const statesEl = document.getElementById('statFailedStates');
+    const volumeEl = document.getElementById('statFailedVolume');
+
+    function formatCount(num) {
+        const n = parseInt(num) || 0;
+        if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+        if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+        return n.toString();
+    }
+
+    if (totalEl) totalEl.textContent = formatCount(total);
+    if (statesEl) statesEl.textContent = formatCount(uniqueStates.size);
+    if (volumeEl) volumeEl.textContent = formatCount(totalVolume);
+
     tbody.innerHTML = '';
 
     const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
