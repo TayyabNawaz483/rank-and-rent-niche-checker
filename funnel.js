@@ -1135,8 +1135,13 @@
             }
         }
 
-        // Recheck button for checked groups - removed per user request
+        // Recheck button for checked/failed groups
         let recheckHtml = '';
+        if (isChecked) {
+            recheckHtml = `<button class="recheck-btn" data-batch-id="${batch.batchId}" title="Move Group back to Pending">
+                <i class="fa-solid fa-rotate-left"></i> Recheck
+            </button>`;
+        }
 
         // Fail & Delete group buttons
         let actionBtns = '';
@@ -1200,7 +1205,7 @@
         // Toggle expand/collapse
         container.querySelectorAll('.batch-group-header').forEach(header => {
             header.addEventListener('click', (e) => {
-                if (e.target.closest('.recheck-btn') || e.target.closest('.fail-group-btn')) return; // Don't toggle on button clicks
+                if (e.target.closest('.recheck-btn') || e.target.closest('.fail-group-btn') || e.target.closest('.delete-group-btn')) return; // Don't toggle on button clicks
                 const targetId = header.dataset.toggle;
                 const body = document.getElementById(targetId);
                 if (body) {
@@ -1221,14 +1226,27 @@
             });
         });
 
-        // Recheck buttons
+        // Recheck buttons with confirmation popup
         container.querySelectorAll('.recheck-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const batchId = btn.dataset.batchId;
-                await updatePipelineRows(batchId, { status: 'pending', checked_at: null });
-                showToast('Group moved back to pending', 'success');
-                updateAllViews();
+                
+                const batchGroupEl = btn.closest('.batch-group');
+                const titleSpan = batchGroupEl?.querySelector('.group-title span');
+                const groupName = titleSpan ? titleSpan.textContent.replace(/^Group #\d+:\s*/, '') : 'this group';
+
+                const confirmed = await showCustomConfirm(
+                    'Move Group to Pending',
+                    `Are you sure you want to move the entire group "${groupName}" back to pending? This will allow workers to re-evaluate it.`,
+                    'Yes, Move to Pending'
+                );
+
+                if (confirmed) {
+                    await updatePipelineRows(batchId, { status: 'pending', checked_at: null });
+                    showToast('Group moved back to pending', 'success');
+                    updateAllViews();
+                }
             });
         });
 
