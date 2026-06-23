@@ -420,6 +420,17 @@
         updateStageView(5);
     }
 
+    function formatCount(num) {
+        const n = parseInt(num) || 0;
+        if (n >= 1000000) {
+            return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+        }
+        if (n >= 1000) {
+            return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+        }
+        return n.toString();
+    }
+
     function updatePipelineStats() {
         for (let s = 1; s <= 5; s++) {
             const pending = s === 1 ? [] : allPipelineData.filter(r => r.stage === (s - 1) && r.status === 'pending');
@@ -428,9 +439,9 @@
             const tabCount = document.getElementById(`tabCount${s}`);
             const stageEl = dot?.closest('.pipeline-stage');
 
-            if (dot) dot.textContent = pending.length;
-            if (count) count.textContent = `${pending.length} pending`;
-            if (tabCount) tabCount.textContent = pending.length;
+            if (dot) dot.textContent = formatCount(pending.length);
+            if (count) count.textContent = `${formatCount(pending.length)} pending`;
+            if (tabCount) tabCount.textContent = formatCount(pending.length);
             if (stageEl) {
                 stageEl.classList.toggle('has-pending', pending.length > 0);
             }
@@ -1019,7 +1030,7 @@
             else if (stageNum === 3) stageText = 'GMB Check';
             else if (stageNum === 4) stageText = 'DA & Traffic Check';
             else if (stageNum === 5) stageText = 'Directories & R&R Check';
-            pendingTitleEl.textContent = `Pending — Needs ${stageText} (${pendingBatches.length} groups pending)`;
+            pendingTitleEl.textContent = `Pending — Needs ${stageText} (${formatCount(pendingBatches.length)} groups pending)`;
         }
 
         // Render pending groups

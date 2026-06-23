@@ -814,6 +814,17 @@ function updateFilterOptions() {
 }
 
 function renderStats() {
+    function formatCount(num) {
+        const n = parseInt(num) || 0;
+        if (n >= 1000000) {
+            return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+        }
+        if (n >= 1000) {
+            return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+        }
+        return n.toString();
+    }
+
     const total = nichesData.length;
     
     // Unique Cities count
@@ -833,9 +844,9 @@ function renderStats() {
     // Total Search Volume
     const totalVolume = nichesData.reduce((sum, item) => sum + (parseInt(item.volume) || 0), 0);
 
-    statTotal.textContent = total;
-    statCities.textContent = uniqueCities.size;
-    statStates.textContent = uniqueStates.size;
+    statTotal.textContent = formatCount(total);
+    statCities.textContent = formatCount(uniqueCities.size);
+    statStates.textContent = formatCount(uniqueStates.size);
     statTotalVolume.textContent = totalVolume.toLocaleString();
 }
 
