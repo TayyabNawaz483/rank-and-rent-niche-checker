@@ -286,12 +286,19 @@
                     .order('created_at', { ascending: false });
 
                 if (!error && data) {
-                    // Merge Supabase data with local data to prevent losing local-only edits/adds
+                    // DB query succeeded — DB is source of truth.
+                    // Only keep local items that were created very recently (< 2 min ago)
+                    // and don't exist in DB yet (recently added, possibly not synced yet).
                     const localData = getPipelineData();
                     const dbIds = new Set(data.map(r => r.id));
-                    const localOnly = localData.filter(r => !dbIds.has(r.id));
+                    const twoMinAgo = Date.now() - 2 * 60 * 1000;
+                    const recentLocalOnly = localData.filter(r => {
+                        if (dbIds.has(r.id)) return false; // already in DB
+                        const createdAt = new Date(r.created_at).getTime();
+                        return createdAt > twoMinAgo; // only keep if created < 2 min ago
+                    });
                     
-                    allPipelineData = [...data, ...localOnly];
+                    allPipelineData = [...data, ...recentLocalOnly];
                     savePipelineData(allPipelineData);
                     await loadFailedNichesForDuplicateCheck();
                     updateAllViews();
