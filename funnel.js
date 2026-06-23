@@ -1231,6 +1231,7 @@
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const batchId = btn.dataset.batchId;
+                const stageNum = parseInt(btn.dataset.stage);
                 
                 const batchGroupEl = btn.closest('.batch-group');
                 const titleSpan = batchGroupEl?.querySelector('.group-title span');
@@ -1243,9 +1244,7 @@
                 );
 
                 if (confirmed) {
-                    await updatePipelineRows(batchId, { status: 'pending', checked_at: null });
-                    showToast('Group moved back to pending', 'success');
-                    updateAllViews();
+                    await recheckBatchGroup(batchId, stageNum);
                 }
             });
         });
@@ -1550,6 +1549,109 @@
 
         // 3. Update the view
         await loadAllPipelineData();
+    }
+
+    async function recheckBatchGroup(batchId, stageNum) {
+        // 1. Get current batch data to find its properties
+        const currentBatchRows = allPipelineData.filter(r => r.batch_id === batchId);
+        if (currentBatchRows.length === 0) return;
+
+        const batchNiche = currentBatchRows[0].niche;
+        const batchState = currentBatchRows[0].state || '';
+        const keywordStrings = currentBatchRows.map(r => r.keyword);
+
+        // 2. Identify downstream rows in pipeline_keywords
+        // Downstream rows have stage === stageNum (currentStage) and matching niche and state.
+        const downstreamRows = allPipelineData.filter(r => 
+            r.stage === stageNum && 
+            r.niche.toLowerCase() === batchNiche.toLowerCase() && 
+            (r.state || '').toLowerCase() === batchState.toLowerCase()
+        );
+        const downstreamBatchIds = [...new Set(downstreamRows.map(r => r.batch_id))].filter(Boolean);
+
+        try {
+            if (supabase) {
+                // Delete downstream rows in pipeline_keywords by their batch_ids
+                if (downstreamBatchIds.length > 0) {
+                    const { error } = await supabase.from('pipeline_keywords').delete().in('batch_id', downstreamBatchIds);
+                    if (error) console.warn("Supabase downstream delete warning:", error);
+                }
+                
+                // If stageNum === 5, also delete from niches table
+                if (stageNum === 5) {
+                    const { error } = await supabase.from('niches').delete().in('keyword', keywordStrings);
+                    if (error) console.warn("Supabase niches delete warning:", error);
+                }
+
+                // Remove failed niches from failed_niches table that were created from this stage validation
+                const { error: failedDeleteError } = await supabase.from('failed_niches')
+                    .delete()
+                    .eq('failed_stage', stageNum)
+                    .eq('niche', batchNiche)
+                    .eq('state', batchState || null);
+                if (failedDeleteError) console.warn("Supabase failed_niches delete warning:", failedDeleteError);
+
+                // Update original rows of this batch to status = 'pending', checked_at = null
+                const { error: updateError } = await supabase.from('pipeline_keywords')
+                    .update({ status: 'pending', checked_at: null })
+                    .eq('batch_id', batchId);
+                if (updateError) throw updateError;
+            }
+
+            // Update LocalStorage & memory fallback
+            let data = getPipelineData();
+            
+            // Delete downstream rows from local storage
+            if (downstreamBatchIds.length > 0) {
+                data = data.filter(r => !downstreamBatchIds.includes(r.batch_id));
+            }
+
+            // Clean local storage failed niches if present
+            try {
+                const localFailed = JSON.parse(localStorage.getItem('rank_rent_failed_niches') || '[]');
+                const filteredFailed = localFailed.filter(r => 
+                    !(r.failed_stage === stageNum && 
+                      r.niche.toLowerCase() === batchNiche.toLowerCase() && 
+                      (r.state || '').toLowerCase() === batchState.toLowerCase())
+                );
+                localStorage.setItem('rank_rent_failed_niches', JSON.stringify(filteredFailed));
+            } catch (e) {
+                console.warn('Failed to clean local storage failed niches:', e);
+            }
+
+            // Clean local storage niches if stageNum === 5
+            if (stageNum === 5) {
+                try {
+                    const localNiches = JSON.parse(localStorage.getItem('rank_rent_niches') || '[]');
+                    const filteredNiches = localNiches.filter(r => !keywordStrings.includes(r.keyword));
+                    localStorage.setItem('rank_rent_niches', JSON.stringify(filteredNiches));
+                } catch (e) {
+                    console.warn('Failed to clean local storage niches:', e);
+                }
+            }
+
+            // Update original rows to pending
+            data.forEach(row => {
+                if (row.batch_id === batchId) {
+                    row.status = 'pending';
+                    row.checked_at = null;
+                }
+            });
+
+            savePipelineData(data);
+            allPipelineData = data;
+
+            // Reload from DB to ensure local and DB state are 100% in sync
+            await loadAllPipelineData();
+            await loadFailedNichesForDuplicateCheck(); // reload failed niches cache
+            await loadPassedNichesForDuplicateCheck(); // reload passed niches cache
+
+            showToast('Group moved back to pending', 'success');
+            updateAllViews();
+        } catch (err) {
+            console.error('Error in recheckBatchGroup:', err);
+            showToast('Failed to revert group: ' + (err.message || 'Unknown error'), 'error');
+        }
     }
 
     function copyBatchKeywords(batchId, start, end, btnEl) {
