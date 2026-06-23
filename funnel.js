@@ -465,6 +465,9 @@
         const nicheInput = document.getElementById('stage1Niche');
         const submitBtn = document.getElementById('stage1SubmitBtn');
 
+        const newKeywords = [];
+        const duplicateKeywords = [];
+
         if (!raw) {
             previewContainer.style.display = 'none';
             submitBtn.disabled = true;
